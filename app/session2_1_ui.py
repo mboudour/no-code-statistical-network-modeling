@@ -27,7 +27,7 @@ from temporal_core import (
 
 TERM_LABELS = {
     "edges": "Edges baseline at the current wave",
-    "memory": "Lagged same-dyad tie persistence",
+    "memory": "Lagged persistent-tie statistic",
     "delrecip": "Lagged delayed reciprocity",
     "lagged_twopath": "Lagged directed/undirected two-path exposure",
 }
@@ -380,6 +380,7 @@ def _record(
 - **Observed waves:** {result['observed_waves']}
 - **Valid one-step transitions:** {result['observed_transitions']}
 - **Joint-risk dyad observations:** {result['dyad_observations']}
+- **Rows excluded for an unavailable prior reverse dyad:** {result['reverse_prior_rows_excluded']}
 - **Stated formula:** `{result['formula']}`
 - **Method appropriateness:** {recipe_note}
 
@@ -454,6 +455,10 @@ def _fit_workspace(
         )
         if result["diagnostic_flags"]:
             st.warning("Diagnostic flags:\n\n" + "\n".join(f"- {item}" for item in result["diagnostic_flags"]))
+        if result["reverse_prior_rows_excluded"]:
+            st.caption(
+                "Delayed reciprocity is estimated only where the current dyad and its prior reverse dyad are both observed and admissible; unavailable reverse dyads are excluded rather than recoded as zero ties."
+            )
         st.markdown("#### 1. Conditional-likelihood and identification checks")
         st.json(result["optimizer"], expanded=False)
         st.caption(
@@ -602,7 +607,7 @@ def render_session2_1() -> None:
             "2. Distinguish N00 persistent non-ties, N01 formations, N10 dissolutions, and N11 persistent ties without assuming that these are separate STERGM processes.\n"
             "3. State a first-order history term: lagged same-dyad persistence, delayed reciprocity for directed networks, or prior-wave two-path exposure.\n"
             "4. Fit the stated lag-only transition model and inspect numerical identification warnings.\n"
-            "5. Simulate one-step outcomes conditional on each observed previous network and compare tie totals, formations, and persistence.\n"
+            "5. Simulate one-step outcomes conditional on each observed previous network and compare tie totals, formations, dissolutions, persistence, and substantively relevant structural features.\n"
             "6. Use a whole-transition bootstrap only where enough observed transitions exist; never treat dyads as independent temporal replications."
         )
         st.warning(

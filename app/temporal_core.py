@@ -331,7 +331,12 @@ def temporal_profile(network: TemporalNetwork) -> dict[str, Any]:
 
 
 def transition_design(network: TemporalNetwork) -> pd.DataFrame:
-    """Build exact sufficient-statistic covariates for first-order lagged TERGMs."""
+    """Build first-order covariates and observation flags on joint transition risk sets.
+
+    The returned ``reverse_prior_observed`` flag marks whether the prior reverse
+    dyad is observed and admissible.  A delayed-reciprocity fit retains only those
+    outcome rows because a missing prior reverse dyad is not a zero tie.
+    """
     waves, active, edge_sets, risk = _state_maps(network)
     rows: list[pd.DataFrame] = []
     for transition_index, (previous, current) in enumerate(
@@ -349,17 +354,25 @@ def transition_design(network: TemporalNetwork) -> pd.DataFrame:
                 prior_matrix[i, j] = 1
                 if not network.directed:
                     prior_matrix[j, i] = 1
+        # Every nonzero product in this matrix involves two prior ties that were
+        # observed and admissible at the prior wave; unavailable dyads are never
+        # manufactured as zero ties.
         twopath = prior_matrix @ prior_matrix
         source_values = [pair[0] for pair in joint_risk]
         target_values = [pair[1] for pair in joint_risk]
         previous_tie = np.asarray([int(pair in edge_sets[previous]) for pair in joint_risk], dtype=int)
         outcome = np.asarray([int(pair in edge_sets[current]) for pair in joint_risk], dtype=int)
         if network.directed:
+            reverse_prior_observed = np.asarray(
+                [(target, source) in risk[previous] for source, target in joint_risk],
+                dtype=bool,
+            )
             delayed_reciprocity = np.asarray(
                 [prior_matrix[node_index[target], node_index[source]] for source, target in joint_risk],
                 dtype=int,
             )
         else:
+            reverse_prior_observed = np.ones(len(joint_risk), dtype=bool)
             delayed_reciprocity = np.zeros(len(joint_risk), dtype=int)
         lagged_twopath = np.asarray(
             [twopath[node_index[source], node_index[target]] for source, target in joint_risk],
@@ -376,6 +389,7 @@ def transition_design(network: TemporalNetwork) -> pd.DataFrame:
                     "outcome": outcome,
                     "memory": previous_tie,
                     "delrecip": delayed_reciprocity,
+                    "reverse_prior_observed": reverse_prior_observed,
                     "lagged_twopath": lagged_twopath,
                 }
             )
@@ -615,6 +629,14 @@ def fit_lagged_tergm(
     """Fit a first-order lag-only TERGM and return transparent computation records."""
     profile = temporal_profile(network)
     design = transition_design(network)
+    reverse_prior_rows_excluded = 0
+    if "delrecip" in terms:
+        reverse_prior_rows_excluded = int((~design["reverse_prior_observed"]).sum())
+        design = design.loc[design["reverse_prior_observed"]].reset_index(drop=True)
+        if design.empty:
+            raise TemporalValidationError(
+                "Delayed reciprocity requires at least one current dyad with an observed, admissible prior reverse dyad."
+            )
     x, names, dropped = _design_matrix(design, terms, network.directed)
     y = design["outcome"].to_numpy(dtype=float)
     if np.unique(y).size < 2:
@@ -635,7 +657,13 @@ def fit_lagged_tergm(
     if np.isfinite(condition_number) and condition_number > 1e8:
         diagnostic_flags.append("The observed-information matrix is ill-conditioned; requested transition effects may be weakly identified.")
     if profile["observed_transitions"] < 5:
-        diagnostic_flags.append("Fewer than five observed transitions are available; temporal replication is very limited and model-based standard errors require strong caution.")
+        diagnostic_flags.append(
+            "Fewer than five observed transitions are available. At-risk dyads contribute conditional-likelihood information in this factorizing model, but temporal heterogeneity and transition-block uncertainty cannot be reliably identified."
+        )
+    if reverse_prior_rows_excluded:
+        diagnostic_flags.append(
+            f"Excluded {reverse_prior_rows_excluded} current dyad rows from the delayed-reciprocity fit because their prior reverse dyad was not observed and admissible."
+        )
 
     bootstrap = _bootstrap(
         design,
@@ -662,6 +690,7 @@ def fit_lagged_tergm(
         "observed_waves": profile["observed_waves"],
         "observed_transitions": profile["observed_transitions"],
         "dyad_observations": len(design),
+        "reverse_prior_rows_excluded": reverse_prior_rows_excluded,
         "coefficients": _coefficient_rows(beta, covariance, names),
         "log_likelihood": float(-negative_log_likelihood),
         "aic": float(2 * negative_log_likelihood + 2 * len(beta)),

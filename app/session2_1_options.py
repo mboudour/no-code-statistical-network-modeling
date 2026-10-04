@@ -23,7 +23,7 @@ WORKED_RECIPES: tuple[Session21Recipe, ...] = (
         identifier="knecht_friendship",
         title="Knecht classroom: persistence and delayed reciprocity",
         terms=("edges", "memory", "delrecip"),
-        method_status="Directed first-order lag-only TERGM. The exact conditional likelihood uses only dyads observed at both adjacent waves; lagged persistence and delayed reciprocity are estimated together.",
+        method_status="Directed first-order lag-only TERGM. The exact conditional likelihood uses current dyads observed at both adjacent waves; delayed reciprocity is estimated only where the prior reverse dyad is also observed and admissible.",
         diagnostic_focus=(
             "four-wave support profile and three observed transition tables",
             "formation, dissolution, persistent-tie, and persistent-non-tie counts on the joint risk set",
@@ -36,7 +36,7 @@ WORKED_RECIPES: tuple[Session21Recipe, ...] = (
         identifier="sampson_liking",
         title="Sampson monastery: persistence, delayed reciprocity, and prior two-path exposure",
         terms=("edges", "memory", "delrecip", "lagged_twopath"),
-        method_status="Directed first-order lag-only TERGM. A lagged two-path exposure is calculated from the preceding panel; it is not a contemporaneous triangle term.",
+        method_status="Directed first-order lag-only TERGM. Delayed reciprocity uses only an observed, admissible prior reverse dyad; a lagged two-path exposure uses observed, admissible prior-wave paths and is not a contemporaneous triangle term.",
         diagnostic_focus=(
             "two directed transitions and their four dyadic transition counts",
             "conditional effects of the previous same-dyad tie, previous reverse tie, and previous directed two-path exposure",
@@ -112,5 +112,5 @@ def byod_method_note(*, directed: bool, include_delayed_reciprocity: bool, inclu
     return (
         "The stated first-order lag-only TERGM contains "
         + ", ".join(terms)
-        + ". Its exact conditional likelihood applies because every included statistic is a function of the prior observed network; it does not estimate contemporaneous structural dependence or separate formation and dissolution processes."
+        + ". Its exact conditional likelihood applies because every included statistic is a function of the prior observed network; delayed reciprocity, when selected, is evaluated only where the prior reverse dyad is observed and admissible. It does not estimate contemporaneous structural dependence or separate formation and dissolution processes."
     )

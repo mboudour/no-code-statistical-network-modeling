@@ -14,7 +14,7 @@ This is not a silent substitute for:
 
 ## Transition support and response
 
-For adjacent observed waves `previous` and `current`, a dyad enters the calculation only when it is admissible and observed at both endpoints. The four descriptive counts are:
+For adjacent observed waves `previous` and `current`, a dyad enters the calculation only when it is admissible and observed at both endpoints. A delayed-reciprocity model additionally requires the prior reverse dyad to be observed and admissible for the corresponding current directed dyad; unavailable reverse dyads are excluded rather than assigned a zero. The four descriptive counts are:
 
 \[
 N_{ab}^{(t)}=\sum_{(i,j)\in D_{t-1,t}}\mathbf{1}\{Y_{ij}^{t-1}=a,\;Y_{ij}^{t}=b\},\quad a,b\in\{0,1\}.
@@ -28,15 +28,15 @@ For a dyad in the transition risk set, the implemented conditional logit is
 
 \[
 \operatorname{logit}\Pr(Y_{ij}^{t}=1\mid Y^{t-1},D_{t-1,t})
-=\beta_0+\beta_{\mathrm{mem}}Y_{ij}^{t-1}
+=\beta_0+\beta_{\mathrm{persist}}Y_{ij}^{t-1}
 +\beta_{\mathrm{drecip}}Y_{ji}^{t-1}
 +\beta_{\mathrm{2path}}h_{ij}(Y^{t-1}).
 \]
 
 - `edges` supplies \(\beta_0\), a current-wave baseline.
-- `memory` supplies \(\beta_{\mathrm{mem}}\), a lagged same-dyad persistence association.
-- `delrecip` is allowed only for a directed response and supplies \(\beta_{\mathrm{drecip}}\), delayed reciprocity from the prior reverse tie.
-- `lagged_twopath` uses a preceding-wave directed two-path count, or an undirected prior shared-neighbor count. It is not a current-wave triangle statistic.
+- `memory` is the implementation label for \(\beta_{\mathrm{persist}}\), a lagged persistent-tie association.
+- `delrecip` is allowed only for a directed response and supplies \(\beta_{\mathrm{drecip}}\), delayed reciprocity from an observed, admissible prior reverse tie.
+- `lagged_twopath` uses a preceding-wave directed two-path count, or an undirected prior shared-neighbor count, restricted to observed and admissible prior-wave paths. It is not a current-wave triangle statistic.
 
 The estimator maximizes the exact conditional logistic likelihood with L-BFGS-B and reports an observed-information covariance only when it can be stably inverted. Coefficients are conditional associations under the complete displayed model and do not identify behavioral mechanisms or causal effects.
 
@@ -50,7 +50,7 @@ Each fit returns:
 4. conditional one-step simulation envelopes for current tie totals, density on the joint risk set, formation counts, dissolution counts, tie-persistence rates, and overall dyadic-stability rates; and
 5. a whole-transition bootstrap coefficient-interval plot where enough observed transitions exist.
 
-The bootstrap resamples whole transition blocks rather than independent dyads. It is deliberately not run below five modeled transitions. It is a finite-sample sensitivity calculation and does not turn a short panel into abundant temporal replication. No MCMC trace, autocorrelation, or sampled-statistic-density panel is displayed: the implemented exact conditional likelihood does not use an MCMC estimation chain. Likewise, degree, geodesic-distance, edgewise shared-partner, and dyadwise shared-partner GOF plots from a static general ERGM are not mislabeled as checks for this support-aware lag-only transition model.
+The bootstrap resamples whole transition blocks rather than independent dyads. It is deliberately not run below five modeled transitions. The number of transitions alone is not an effective sample size: in this dyad-factorizing lag-only model, at-risk dyads also contribute conditional-likelihood information. However, a short panel cannot identify temporal heterogeneity or justify reliable transition-block resampling. No MCMC trace, autocorrelation, or sampled-statistic-density panel is displayed: the implemented exact conditional likelihood does not use an MCMC estimation chain. Likewise, degree, geodesic-distance, edgewise shared-partner, and dyadwise shared-partner GOF plots from a static general ERGM are not mislabeled as checks for this support-aware lag-only transition model.
 
 ## Exactly five public worked examples
 
