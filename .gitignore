@@ -11,4 +11,7 @@ __pycache__/
 *.snm
 *.toc
 *.vrb
-slides/**/preflight/
+# Beamer source, compiled PDFs, and supplied template assets are delivered privately,
+# not versioned in the public computation repository.
+slides/
+tests/test_session*_materials.py

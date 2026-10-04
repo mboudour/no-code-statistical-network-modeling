@@ -57,11 +57,105 @@ def _profile_panel(network: TemporalNetwork) -> dict[str, Any]:
         "For an admissible dyad, N00 is a persistent non-tie, N01 a formation, N10 a dissolution, and N11 a persistent tie. Overall stability includes N00 and N11; tie persistence is N11 alone."
     )
     st.dataframe(profile["transition_table"], width="stretch", hide_index=True)
+    st.plotly_chart(
+        _transition_count_figure(profile["transition_table"]),
+        width="stretch",
+        key="session21_observed_transition_composition",
+    )
     if profile["observed_intervals"] > profile["observed_transitions"]:
         st.caption(
             f"{profile['observed_intervals']} adjacent observed-wave intervals were documented, but {profile['observed_intervals'] - profile['observed_transitions']} had no jointly at-risk dyad and therefore contribute no conditional likelihood information."
         )
     return profile
+
+
+def _transition_count_figure(transition_table: pd.DataFrame) -> go.Figure:
+    """Visualize the complete four-cell transition composition for every interval."""
+    data = transition_table.copy()
+    transition = data["from_wave"].astype(str) + " → " + data["to_wave"].astype(str)
+    figure = go.Figure()
+    for column, label, color in [
+        ("persistent_nonties_N00", "N00 persistent non-ties", "#CBD5E1"),
+        ("formations_N01", "N01 formations", "#F59E0B"),
+        ("dissolutions_N10", "N10 dissolutions", "#DC2626"),
+        ("persistent_ties_N11", "N11 persistent ties", "#4E2A84"),
+    ]:
+        figure.add_trace(
+            go.Bar(x=transition, y=data[column], name=label, marker_color=color)
+        )
+    figure.update_layout(
+        title="Observed four-cell transition composition on each joint risk set",
+        barmode="stack",
+        template="plotly_white",
+        height=360,
+        margin={"l": 30, "r": 20, "t": 55, "b": 85},
+        xaxis_title="Observed transition",
+        yaxis_title="Joint at-risk dyads",
+        legend={"orientation": "h", "y": -0.32},
+    )
+    return figure
+
+
+def _coefficient_figure(rows: list[dict[str, Any]]) -> go.Figure:
+    """Show exact-likelihood coefficient estimates with Wald 95% intervals."""
+    data = pd.DataFrame(rows).iloc[::-1]
+    error = 1.96 * data["standard_error"]
+    figure = go.Figure(
+        go.Scatter(
+            x=data["estimate"],
+            y=data["term"],
+            mode="markers",
+            marker={"size": 10, "color": "#4E2A84"},
+            error_x={"type": "data", "array": error, "visible": True, "color": "#4E2A84"},
+            customdata=data[["standard_error", "z_value", "p_value"]].to_numpy(),
+            hovertemplate="Term=%{y}<br>Estimate=%{x:.3f}<br>Standard error=%{customdata[0]:.3f}<br>z=%{customdata[1]:.3f}<br>Wald p=%{customdata[2]:.3g}<extra></extra>",
+            name="Conditional log-odds estimate",
+        )
+    )
+    figure.add_vline(x=0, line_dash="dash", line_color="#64748B")
+    figure.update_layout(
+        title="Conditional transition-model coefficients (Wald 95% intervals)",
+        template="plotly_white",
+        height=max(280, 95 * len(data) + 130),
+        margin={"l": 145, "r": 20, "t": 55, "b": 55},
+        xaxis_title="Conditional log-odds contribution",
+        yaxis_title="",
+        showlegend=False,
+    )
+    return figure
+
+
+def _calibration_figure(rows: list[dict[str, Any]]) -> go.Figure:
+    """Compare binned fitted conditional probabilities against observed tie frequencies."""
+    data = pd.DataFrame(rows)
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=[0, 1], y=[0, 1], mode="lines", line={"dash": "dash", "color": "#64748B"}, name="Perfect calibration"
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=data["mean_fitted_probability"],
+            y=data["observed_tie_rate"],
+            mode="markers+lines",
+            marker={"size": 8, "color": "#4E2A84"},
+            line={"color": "#4E2A84"},
+            customdata=data[["bin_lower", "bin_upper", "dyads"]].to_numpy(),
+            hovertemplate="Fitted bin=%{customdata[0]:.2f}–%{customdata[1]:.2f}<br>Dyads=%{customdata[2]}<br>Mean fitted probability=%{x:.3f}<br>Observed tie rate=%{y:.3f}<extra></extra>",
+            name="Binned conditional calibration",
+        )
+    )
+    figure.update_layout(
+        title="Conditional-probability calibration across at-risk dyads",
+        template="plotly_white",
+        height=360,
+        margin={"l": 55, "r": 20, "t": 55, "b": 55},
+        xaxis={"title": "Mean fitted conditional probability", "range": [0, 1]},
+        yaxis={"title": "Observed tie proportion", "range": [0, 1]},
+        legend={"orientation": "h", "y": -0.24},
+    )
+    return figure
 
 
 def _transition_figure(
@@ -119,52 +213,106 @@ def _transition_figure(
 
 
 def _predictive_panel(result: dict[str, Any], *, key: str) -> None:
-    """Render one-step simulations conditioned on every observed previous network."""
+    """Render the complete support-aware one-step temporal diagnostic family."""
     st.markdown("#### 3. Conditional one-step simulation checks")
     st.caption(
-        "For each observed transition, the fitted model simulates the next network conditional on that transition's observed previous network and joint risk set. These are transition-model checks, not held-out causal or event-history validation."
+        "For each observed transition, the fitted model simulates the next network conditional on that transition's observed previous network and joint risk set. These are temporal model checks, not held-out causal or event-history validation."
     )
     predictive = result["posterior_predictive"]
-    st.plotly_chart(
-        _transition_figure(
-            predictive,
-            observed_key="observed_ties",
-            mean_key="simulated_ties_mean",
-            lower_key="simulated_ties_lower_025",
-            upper_key="simulated_ties_upper_975",
-            title="Current-wave tie count: observed versus conditional simulations",
-            yaxis_title="Tie count",
-        ),
-        width="stretch",
-        key=f"{key}_ties",
+    ties, turnover, stability, calibration = st.tabs(
+        ["Current ties and density", "Formations and dissolutions", "Persistence and stability", "Probability calibration"]
     )
-    st.plotly_chart(
-        _transition_figure(
-            predictive,
-            observed_key="observed_formations",
-            mean_key="simulated_formations_mean",
-            lower_key="simulated_formations_lower_025",
-            upper_key="simulated_formations_upper_975",
-            title="Formation count: observed versus conditional simulations",
-            yaxis_title="Formation count",
-        ),
-        width="stretch",
-        key=f"{key}_formations",
-    )
-    persistence = pd.DataFrame(predictive).dropna(subset=["observed_tie_persistence"])
-    if not persistence.empty:
+    with ties:
         st.plotly_chart(
             _transition_figure(
-                persistence.to_dict(orient="records"),
-                observed_key="observed_tie_persistence",
-                mean_key="simulated_tie_persistence_mean",
-                lower_key="simulated_tie_persistence_lower_025",
-                upper_key="simulated_tie_persistence_upper_975",
-                title="Tie persistence: observed versus conditional simulations",
-                yaxis_title="Proportion of previous ties retained",
+                predictive,
+                observed_key="observed_ties",
+                mean_key="simulated_ties_mean",
+                lower_key="simulated_ties_lower_025",
+                upper_key="simulated_ties_upper_975",
+                title="Current-wave tie count: observed versus conditional simulations",
+                yaxis_title="Tie count",
             ),
             width="stretch",
-            key=f"{key}_persistence",
+            key=f"{key}_ties",
+        )
+        st.plotly_chart(
+            _transition_figure(
+                predictive,
+                observed_key="observed_density",
+                mean_key="simulated_density_mean",
+                lower_key="simulated_density_lower_025",
+                upper_key="simulated_density_upper_975",
+                title="Current-wave density on the joint risk set: observed versus conditional simulations",
+                yaxis_title="Tie proportion",
+            ),
+            width="stretch",
+            key=f"{key}_density",
+        )
+    with turnover:
+        st.plotly_chart(
+            _transition_figure(
+                predictive,
+                observed_key="observed_formations",
+                mean_key="simulated_formations_mean",
+                lower_key="simulated_formations_lower_025",
+                upper_key="simulated_formations_upper_975",
+                title="Formation count: observed versus conditional simulations",
+                yaxis_title="Formation count",
+            ),
+            width="stretch",
+            key=f"{key}_formations",
+        )
+        st.plotly_chart(
+            _transition_figure(
+                predictive,
+                observed_key="observed_dissolutions",
+                mean_key="simulated_dissolutions_mean",
+                lower_key="simulated_dissolutions_lower_025",
+                upper_key="simulated_dissolutions_upper_975",
+                title="Dissolution count: observed versus conditional simulations",
+                yaxis_title="Dissolution count",
+            ),
+            width="stretch",
+            key=f"{key}_dissolutions",
+        )
+    with stability:
+        persistence = pd.DataFrame(predictive).dropna(subset=["observed_tie_persistence"])
+        if not persistence.empty:
+            st.plotly_chart(
+                _transition_figure(
+                    persistence.to_dict(orient="records"),
+                    observed_key="observed_tie_persistence",
+                    mean_key="simulated_tie_persistence_mean",
+                    lower_key="simulated_tie_persistence_lower_025",
+                    upper_key="simulated_tie_persistence_upper_975",
+                    title="Tie persistence: observed versus conditional simulations",
+                    yaxis_title="Proportion of previous ties retained",
+                ),
+                width="stretch",
+                key=f"{key}_persistence",
+            )
+        st.plotly_chart(
+            _transition_figure(
+                predictive,
+                observed_key="observed_overall_stability",
+                mean_key="simulated_overall_stability_mean",
+                lower_key="simulated_overall_stability_lower_025",
+                upper_key="simulated_overall_stability_upper_975",
+                title="Overall dyadic stability: observed versus conditional simulations",
+                yaxis_title="Proportion of joint-risk dyads unchanged",
+            ),
+            width="stretch",
+            key=f"{key}_stability",
+        )
+    with calibration:
+        st.plotly_chart(
+            _calibration_figure(result["conditional_probability_calibration"]),
+            width="stretch",
+            key=f"{key}_calibration",
+        )
+        st.caption(
+            "Calibration is a descriptive in-sample conditional check across dyads. It does not establish out-of-sample prediction performance or a causal mechanism."
         )
     st.dataframe(pd.DataFrame(predictive), width="stretch", hide_index=True)
 
@@ -178,7 +326,35 @@ def _bootstrap_panel(result: dict[str, Any]) -> None:
         st.caption(
             f"Completed {bootstrap['replicates_completed']} of {bootstrap['replicates_requested']} whole-transition resamples. Individual dyads were not treated as independent replications."
         )
-        st.dataframe(pd.DataFrame(bootstrap["intervals"]), width="stretch", hide_index=True)
+        intervals = pd.DataFrame(bootstrap["intervals"]).iloc[::-1]
+        figure = go.Figure(
+            go.Scatter(
+                x=intervals["median"],
+                y=intervals["term"],
+                mode="markers",
+                marker={"size": 10, "color": "#0F766E"},
+                error_x={
+                    "type": "data",
+                    "array": intervals["upper_975"] - intervals["median"],
+                    "arrayminus": intervals["median"] - intervals["lower_025"],
+                    "visible": True,
+                    "color": "#0F766E",
+                },
+                name="Bootstrap median and 95% interval",
+            )
+        )
+        figure.add_vline(x=0, line_dash="dash", line_color="#64748B")
+        figure.update_layout(
+            title="Whole-transition bootstrap coefficient intervals",
+            template="plotly_white",
+            height=max(280, 95 * len(intervals) + 130),
+            margin={"l": 130, "r": 20, "t": 55, "b": 55},
+            xaxis_title="Conditional log-odds contribution",
+            yaxis_title="",
+            showlegend=False,
+        )
+        st.plotly_chart(figure, width="stretch", key="session21_bootstrap_intervals")
+        st.dataframe(intervals.iloc[::-1], width="stretch", hide_index=True)
     elif bootstrap["status"] == "unstable":
         st.warning(
             f"Only {bootstrap['replicates_completed']} of {bootstrap['replicates_requested']} resamples produced a stable fit. The result is a numerical warning, not an interval estimate."
@@ -271,12 +447,17 @@ def _fit_workspace(
         st.success("The Session 2.1 transition calculation finished. Inspect its support, warnings, and conditional simulations before interpreting coefficients.")
         st.code(result["formula"], language="text")
         st.dataframe(pd.DataFrame(result["coefficients"]), width="stretch", hide_index=True)
+        st.plotly_chart(
+            _coefficient_figure(result["coefficients"]),
+            width="stretch",
+            key=f"{key}_coefficients",
+        )
         if result["diagnostic_flags"]:
             st.warning("Diagnostic flags:\n\n" + "\n".join(f"- {item}" for item in result["diagnostic_flags"]))
         st.markdown("#### 1. Conditional-likelihood and identification checks")
         st.json(result["optimizer"], expanded=False)
         st.caption(
-            "The included terms depend only on the preceding observed network. Therefore this restricted lag-only TERGM has an exact conditional dyadic likelihood. Adding contemporaneous structural dependence would require a different likelihood/simulation computation and is not silently approximated here."
+            "The included terms depend only on the preceding observed network. Therefore this restricted lag-only TERGM has an exact conditional dyadic likelihood. No MCMC trace, autocorrelation, or sampled-statistic-density plots are produced because this computation does not use an MCMC estimation chain. Adding contemporaneous structural dependence would require a different likelihood/simulation computation and is not silently approximated here."
         )
         st.markdown("#### 2. Transition-count audit")
         st.dataframe(pd.DataFrame(result["transition_counts"]), width="stretch", hide_index=True)
@@ -406,7 +587,7 @@ def _byod() -> None:
 def render_session2_1() -> None:
     """Render the full computation-first interface for Session 2.1."""
     st.title("Session 2.1 — Temporal ERGMs for Network Change")
-    st.caption("Day 2 · October 28, 2026 · 4:30–6:00 PM GMT")
+    st.caption("Day 2 · October 29, 2026 · 3:00–4:30 PM GMT")
     st.info(
         "This page models a discrete-time network transition conditional on the preceding observed network and an explicit dyadic risk set. It never turns missingness, actor absence, an observation gap, or a rank-order outcome into an ordinary zero tie."
     )

@@ -31,7 +31,7 @@ Session 1.1 provides:
 - exactly five publicly sourced, pre-validated network examples;
 - BYOD edge-list and node-table validation that does not silently recode valued, temporal, or structurally incomplete data;
 - a standard R/**statnet** calculation engine (`network` + `ergm`); and
-- a 50-frame Beamer deck, including **47 substantive content frames**, compiled from the supplied seminar template.
+- a Beamer deck compiled from the supplied seminar template and delivered directly to the seminar owner; slide assets are not versioned in this GitHub repository.
 
 ### Session 1.2 — Curved ERGMs, Fit, and Degeneracy
 
@@ -41,7 +41,7 @@ The second unit provides:
 - a full standard audit: MCMC trace/autocorrelation/distribution panels, simulation-based GOF, and support-specific omitted-statistic checks;
 - fixed-decay geometrically weighted degree and closure models, plus carefully bounded one-decay curved sensitivity fits;
 - a BYOD audit workflow that preserves declared network support rather than applying inappropriate terms; and
-- a 49-frame Beamer source deck, plus supplied repeating opening and closing template pages, compiled from the seminar template.
+- a Beamer deck compiled from the supplied seminar template and delivered directly to the seminar owner; slide assets are not versioned in this GitHub repository.
 
 > **Academic boundary:** An ERGM coefficient is a conditional, model-based log-odds contribution on the declared graph support. It is not a marginal tie probability and is not, by itself, a causal effect.
 
@@ -56,7 +56,7 @@ The third unit provides:
 - an exact conditional logistic calculation for a declared **first-order lag-only TERGM subclass**, with edges, same-dyad memory, directed delayed reciprocity, and/or prior-wave two-path exposure;
 - transition-specific N00/N01/N10/N11 summaries, conditional one-step simulation envelopes, numerical checks, and whole-transition bootstrap sensitivity where enough transitions exist;
 - repeated-network BYOD validation, including optional `transition_block` and at-risk-dyad tables; and
-- a 44-frame Beamer source deck, plus supplied repeating opening and closing template pages.
+- a 44-authored-frame Beamer deck, plus supplied repeating opening and closing template pages, delivered directly to the seminar owner rather than versioned in GitHub.
 
 > **Temporal boundary:** The Session 2.1 computation is not a general TERGM with contemporaneous structural dependence, a Monte Carlo likelihood implementation for such a model, a STERGM formation/dissolution decomposition, a continuous-time model, or a causal analysis. Its scope is stated in [`docs/session2_1_methods.md`](docs/session2_1_methods.md).
 
@@ -103,12 +103,6 @@ Detailed local-validation and Render deployment instructions are in [`docs/docke
 
 ```bash
 PYTHONPATH=app .venv/bin/pytest -q
-cd slides/session1_1
-pdflatex -interaction=nonstopmode -halt-on-error session1_1.tex
-cd ../session1_2
-pdflatex -interaction=nonstopmode -halt-on-error session1_2.tex
-cd ../session2_1
-pdflatex -interaction=nonstopmode -halt-on-error session2_1.tex
 ```
 
 ## BYOD contract for Session 1.1
@@ -129,9 +123,9 @@ The committed CSV files are reproducibly generated from publicly documented sour
 
 The Session 1.1 script extracts Florentine, Sampson, and Kapferer objects from the installed `ergm` version; downloads the Lazega public archive from the Oxford RSiena source; and reads NetworkX's documented Davis affiliation graph. The Session 2.1 script preserves each repeated relation, its relevant support rule, and its documented source rather than pooling waves. It reads public Statnet/RSiena panels and source archives for the COW annual series; each script checks its documented output before writing files.
 
-## Slides
+## Slide delivery
 
-The Beamer sources and supplied template assets are under [`slides/session1_1/`](slides/session1_1/), [`slides/session1_2/`](slides/session1_2/), and [`slides/session2_1/`](slides/session2_1/). The opening, agenda, and closing template PDFs are retained; all substantive slides use itemized academic content and bold purple key terms. The Session 1.2 computation contract and audit boundary are documented in [`docs/session1_2_methods.md`](docs/session1_2_methods.md); the Session 2.1 design and computational boundary are documented in [`docs/session2_1_methods.md`](docs/session2_1_methods.md).
+Beamer decks, their PDF exports, and supplied slide-template assets are deliberately **delivered directly to the seminar owner** and are not stored in this GitHub repository. The repository retains the application, computation engines, public-data provenance, and method documentation. The Session 1.2 computation contract is documented in [`docs/session1_2_methods.md`](docs/session1_2_methods.md); the Session 2.1 design and computation boundary are documented in [`docs/session2_1_methods.md`](docs/session2_1_methods.md).
 
 ## License and data attribution
 

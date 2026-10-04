@@ -44,12 +44,13 @@ The estimator maximizes the exact conditional logistic likelihood with L-BFGS-B 
 
 Each fit returns:
 
-1. numerical optimizer status and information-matrix condition number;
-2. the transition-by-transition joint-risk-set counts;
-3. conditional one-step simulation envelopes for current tie totals, formation counts, and tie-persistence rates; and
-4. a whole-transition bootstrap where enough observed transitions exist.
+1. coefficient estimates with Wald 95% intervals, numerical optimizer status, and the information-matrix condition number;
+2. the transition-by-transition joint-risk-set counts and an N00/N01/N10/N11 stacked transition-composition plot;
+3. binned fitted-probability versus observed-rate calibration;
+4. conditional one-step simulation envelopes for current tie totals, density on the joint risk set, formation counts, dissolution counts, tie-persistence rates, and overall dyadic-stability rates; and
+5. a whole-transition bootstrap coefficient-interval plot where enough observed transitions exist.
 
-The bootstrap resamples whole transition blocks rather than independent dyads. It is deliberately not run below five modeled transitions. It is a finite-sample sensitivity calculation and does not turn a short panel into abundant temporal replication.
+The bootstrap resamples whole transition blocks rather than independent dyads. It is deliberately not run below five modeled transitions. It is a finite-sample sensitivity calculation and does not turn a short panel into abundant temporal replication. No MCMC trace, autocorrelation, or sampled-statistic-density panel is displayed: the implemented exact conditional likelihood does not use an MCMC estimation chain. Likewise, degree, geodesic-distance, edgewise shared-partner, and dyadwise shared-partner GOF plots from a static general ERGM are not mislabeled as checks for this support-aware lag-only transition model.
 
 ## Exactly five public worked examples
 

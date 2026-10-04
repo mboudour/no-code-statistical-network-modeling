@@ -539,30 +539,69 @@ def _posterior_predictive(
         draws = rng.binomial(1, group_probabilities, size=(int(simulations), len(group)))
         observed_ties = int(y_observed.sum())
         simulated_ties = draws.sum(axis=1)
+        dyad_count = len(group)
         absent = previous == 0
         prior_ties = previous == 1
         observed_formations = int(((y_observed == 1) & absent).sum())
         simulated_formations = ((draws == 1) & absent).sum(axis=1)
+        observed_dissolutions = int(((y_observed == 0) & prior_ties).sum())
+        simulated_dissolutions = ((draws == 0) & prior_ties).sum(axis=1)
         observed_persistence = float(y_observed[prior_ties].mean()) if prior_ties.any() else np.nan
         simulated_persistence = draws[:, prior_ties].mean(axis=1) if prior_ties.any() else np.full(int(simulations), np.nan)
+        observed_stability = float((y_observed == previous).mean())
+        simulated_stability = (draws == previous).mean(axis=1)
         output.append(
             {
                 "transition": f"{group['from_wave'].iloc[0]} → {group['to_wave'].iloc[0]}",
+                "joint_at_risk_dyads": dyad_count,
                 "observed_ties": observed_ties,
                 "simulated_ties_mean": float(simulated_ties.mean()),
                 "simulated_ties_lower_025": float(np.quantile(simulated_ties, 0.025)),
                 "simulated_ties_upper_975": float(np.quantile(simulated_ties, 0.975)),
+                "observed_density": float(observed_ties / dyad_count),
+                "simulated_density_mean": float(simulated_ties.mean() / dyad_count),
+                "simulated_density_lower_025": float(np.quantile(simulated_ties, 0.025) / dyad_count),
+                "simulated_density_upper_975": float(np.quantile(simulated_ties, 0.975) / dyad_count),
                 "observed_formations": observed_formations,
                 "simulated_formations_mean": float(simulated_formations.mean()),
                 "simulated_formations_lower_025": float(np.quantile(simulated_formations, 0.025)),
                 "simulated_formations_upper_975": float(np.quantile(simulated_formations, 0.975)),
+                "observed_dissolutions": observed_dissolutions,
+                "simulated_dissolutions_mean": float(simulated_dissolutions.mean()),
+                "simulated_dissolutions_lower_025": float(np.quantile(simulated_dissolutions, 0.025)),
+                "simulated_dissolutions_upper_975": float(np.quantile(simulated_dissolutions, 0.975)),
                 "observed_tie_persistence": observed_persistence if np.isfinite(observed_persistence) else None,
                 "simulated_tie_persistence_mean": float(np.nanmean(simulated_persistence)) if np.isfinite(simulated_persistence).any() else None,
                 "simulated_tie_persistence_lower_025": float(np.nanquantile(simulated_persistence, 0.025)) if np.isfinite(simulated_persistence).any() else None,
                 "simulated_tie_persistence_upper_975": float(np.nanquantile(simulated_persistence, 0.975)) if np.isfinite(simulated_persistence).any() else None,
+                "observed_overall_stability": observed_stability,
+                "simulated_overall_stability_mean": float(simulated_stability.mean()),
+                "simulated_overall_stability_lower_025": float(np.quantile(simulated_stability, 0.025)),
+                "simulated_overall_stability_upper_975": float(np.quantile(simulated_stability, 0.975)),
             }
         )
     return output
+
+
+def _calibration_table(probabilities: np.ndarray, outcomes: np.ndarray) -> list[dict[str, Any]]:
+    """Summarize conditional-probability calibration without retaining every dyad output."""
+    cuts = np.linspace(0.0, 1.0, 11)
+    bin_index = np.clip(np.digitize(probabilities, cuts, right=False) - 1, 0, 9)
+    rows: list[dict[str, Any]] = []
+    for index in range(10):
+        selected = bin_index == index
+        if not selected.any():
+            continue
+        rows.append(
+            {
+                "bin_lower": float(cuts[index]),
+                "bin_upper": float(cuts[index + 1]),
+                "dyads": int(selected.sum()),
+                "mean_fitted_probability": float(probabilities[selected].mean()),
+                "observed_tie_rate": float(outcomes[selected].mean()),
+            }
+        )
+    return rows
 
 
 def fit_lagged_tergm(
@@ -632,6 +671,7 @@ def fit_lagged_tergm(
         "transition_counts": profile["transition_table"].to_dict(orient="records"),
         "bootstrap": bootstrap,
         "posterior_predictive": predictive,
+        "conditional_probability_calibration": _calibration_table(probabilities, y),
         "interpretation_note": (
             "This computation estimates a first-order TERGM whose included statistics depend only on the preceding observed network. "
             "Because no contemporaneous structural term is included, its conditional likelihood factorizes over at-risk dyads. "

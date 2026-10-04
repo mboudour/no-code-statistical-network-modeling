@@ -80,6 +80,10 @@ def test_session21_computation_runs_directed_and_undirected_workflows() -> None:
     assert directed["estimated_terms"] == ["edges", "memory", "delrecip"]
     assert directed["bootstrap"]["status"] == "not_run"
     assert len(directed["posterior_predictive"]) == 3
+    assert {"observed_dissolutions", "observed_density", "observed_overall_stability"}.issubset(
+        directed["posterior_predictive"][0]
+    )
+    assert directed["conditional_probability_calibration"]
     assert undirected["status"] == "ok"
     assert undirected["estimated_terms"] == ["edges", "memory", "lagged_twopath"]
     assert len(undirected["posterior_predictive"]) == 26
@@ -105,3 +109,8 @@ def test_session21_page_exposes_visible_choices_and_exact_likelihood_boundary() 
     assert "five visible choices" in source
     assert "conditional likelihood is exact" in source
     assert "does not provide STERGM formation/dissolution components" in source
+    assert "Dissolution count: observed versus conditional simulations" in source
+    assert "Overall dyadic stability: observed versus conditional simulations" in source
+    assert "Conditional-probability calibration" in source
+    assert "Whole-transition bootstrap coefficient intervals" in source
+    assert "Day 2 · October 29, 2026 · 3:00–4:30 PM GMT" in source
