@@ -384,10 +384,15 @@ def _render_fit(
 
 def _render_worked_examples() -> None:
     catalog = load_catalog()
+    st.markdown("#### Choose one of the five documented public networks")
+    st.caption(
+        "Florentine Families is the initial example. Open the selector below to switch among all five worked networks; the applicable ERGM statistics and the displayed data change with the selected network."
+    )
     selected_id = st.selectbox(
-        "Public static-network worked example",
+        "Worked network — 5 datasets available",
         list(catalog),
         format_func=lambda identifier: catalog[identifier].name,
+        help="Open this list to choose Florentine Families, Sampson Monastery, Lazega Law Firm, Davis Southern Women, or Kapferer Tailor Shop.",
     )
     spec = catalog[selected_id]
     nodes, edges = load_example(spec)
