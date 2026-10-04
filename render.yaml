@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: no-code-statistical-network-modeling
+    runtime: docker
+    plan: free
+    repo: https://github.com/mboudour/no-code-statistical-network-modeling.git
+    branch: main
+    autoDeployTrigger: commit
+    healthCheckPath: /_stcore/health

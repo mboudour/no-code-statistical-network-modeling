@@ -49,7 +49,13 @@ Rscript r/bootstrap_packages.R
 
 The Streamlit page reports whether the R engine is available and provides an explicit installation control. It never installs software merely because a user opens a dataset. The bootstrap intentionally installs only required runtime dependencies—not optional suggested packages—and uses up to two available workers so first-use setup is substantially smaller and faster.
 
-### 3. Verify the current unit
+### 3. Public Docker deployment — recommended
+
+For a public seminar service, use the repository's [`Dockerfile`](Dockerfile) and [`render.yaml`](render.yaml), rather than asking participants to install R packages. The image uses the r2u distribution's prebuilt R/statnet packages **while the image is built**. Consequently, the running application starts with `ergm` available and presents no participant-facing package-installation step.
+
+Detailed local-validation and Render deployment instructions are in [`docs/docker-deployment.md`](docs/docker-deployment.md).
+
+### 4. Verify the current unit
 
 ```bash
 PYTHONPATH=app .venv/bin/pytest -q
