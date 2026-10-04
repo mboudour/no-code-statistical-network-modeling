@@ -109,7 +109,7 @@ An optimizer stopping, small printed standard errors, or a coefficient with a sm
 
 \begin{frame}{Curved exponential families}
 \begin{itemize}
-\item A \term{curved ERGM} has a natural parameter that is a nonlinear function of a lower-dimensional parameter: $\eta(\theta)\in\R^q$ with $q>p=\dim(\theta)$.
+\item A \term{curved ERGM} has a natural parameter $\eta(\theta)\in\R^q$ that depends nonlinearly on a lower-dimensional parameter $\theta\in\R^p$, typically with $p<q$.
 \item Its probability law is
 \[
 \Pr_{\theta}(Y=y)=\frac{\exp\{\eta(\theta)^{\mathsf T}g(y)\}}{\kappa\{\eta(\theta)\}}.
@@ -246,7 +246,7 @@ Estimating a decay because software permits it is not a justification. The scien
 
 \begin{frame}{What is ERGM degeneracy?}
 \begin{itemize}
-\item \term{Degeneracy} concerns the shape of a fitted or candidate graph distribution, not merely an estimation warning.
+\item \term{Degeneracy} concerns a model distribution that places most of its probability on a relatively small set of graph configurations, often configurations far from the observed network.
 \item In a practically degenerate model, probability may concentrate on a small collection of structurally extreme graphs, such as nearly empty, nearly complete, or otherwise unrealistic regimes.
 \item The distribution can be highly sensitive: small parameter changes produce very large changes in expected network statistics.
 \item Degeneracy is assessed through the simulated distribution, multimodality, concentration, and the substantive plausibility of simulated graphs.
@@ -260,7 +260,7 @@ Phenomenon & Meaning\\
 \midrule
 Poor MCMC mixing & The sampler explores its target distribution inefficiently or insufficiently.\\
 MCMLE nonconvergence & \term{Monte Carlo maximum likelihood estimation} has not established a stable estimate with the available Monte Carlo information.\\
-Finite-MLE nonexistence & The observed statistic lies on a boundary where an ordinary finite canonical estimate does not exist.\\
+Finite-MLE nonexistence & The observed sufficient-statistic vector lies on the relevant boundary of the convex support, so an ordinary finite canonical MLE does not exist.\\
 Degeneracy & The model distribution itself is concentrated on structurally extreme or separated graph regimes.\\
 \bottomrule
 \end{tabularx}
@@ -316,7 +316,7 @@ relative to its Monte Carlo uncertainty.
 
 \begin{frame}{MCMC trace plots: first diagnostic panel}
 \begin{itemize}
-\item A \term{trace plot} displays retained MCMC values of monitored sufficient statistics or parameters against sample index.
+\item A \term{trace plot} displays retained MCMC values of monitored network statistics against sample index; parameter traces may also arise in estimation procedures that update parameters iteratively.
 \item Look for sustained movement around a stable region rather than monotone drift, rare jumps between modes, or very long plateaus.
 \item A visually calm trace can still be highly autocorrelated; trace plots and autocorrelation must be read together.
 \item Session 1.2 preserves the random seed, burn-in, interval, retained sample size, and messages so a diagnostic run is reproducible.
@@ -354,8 +354,8 @@ relative to its Monte Carlo uncertainty.
 \begin{itemize}
 \item \term{Degree distribution:} whether simulated concentration and isolates resemble the observed graph.
 \item \term{Geodesic-distance distribution:} whether connected-pair distances and unreachable pairs are represented under a stated convention.
-\item \term{Edgewise shared partners:} closure around existing ties.
-\item \term{Dyadwise shared partners:} shared-neighbor structure across all dyads.
+\item \term{Edgewise shared-partner distribution:} whether simulated local closure around existing ties resembles the observed pattern.
+\item \term{Dyadwise shared-partner distribution:} whether simulated shared-neighbor structure across all dyads resembles the observed pattern.
 \item \term{Additional omitted checks:} component sizes, triangle count, and any theory-relevant feature omitted from the formula.
 \end{itemize}
 \end{frame}
@@ -374,7 +374,7 @@ relative to its Monte Carlo uncertainty.
 \item Preserve the two-mode support and report \term{first-mode} and \term{second-mode} degree distributions separately.
 \item A geodesic-distance diagnostic must retain bipartite parity and must not be described as a one-mode social distance without a separately defined projection.
 \item Ordinary unipartite triangles, GWESP, ESP, and DSP do not apply directly: within-mode cells are structural zeros and bipartite triangles are impossible.
-\item Useful auxiliary checks include component sizes, isolates, woman--woman shared-event overlap, and event--event shared-participant overlap.
+\item Useful auxiliary checks include component sizes, isolates, first-mode shared-neighbor overlap, and second-mode shared-neighbor overlap (e.g., woman--woman shared events and event--event shared participants in the Davis data).
 \end{itemize}
 \end{frame}
 
@@ -421,7 +421,7 @@ For nested maximum-likelihood ERGMs, the likelihood-ratio statistic is
 \begin{frame}{Information criteria and their limits}
 \begin{itemize}
 \item Common summaries are $\operatorname{AIC}=-2\ell(\hat\theta)+2p$ and $\operatorname{BIC}=-2\ell(\hat\theta)+p\log N$.
-\item In dependent network data, the effective sample size $N$ is not automatically the number of dyads; its interpretation depends on the asymptotic regime and design.
+\item For a single dependent network, the $N$ entering BIC is not uniquely determined by the ERGM likelihood itself; choices such as actors or admissible dyads require an explicit asymptotic justification.
 \item Likelihood calculations may themselves involve Monte Carlo estimation, so small differences can be unstable relative to computational uncertainty.
 \item Information criteria are evidence to combine with diagnostics and scientific interpretation, not an automatic model-selection rule.
 \end{itemize}

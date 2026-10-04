@@ -27,6 +27,23 @@ from session1_2_options import (
 
 CURVED_TERMS = {"gwdegree", "gwesp", "gwidegree", "gwodegree"}
 
+AUXILIARY_STATISTIC_LABELS = {
+    "edges": "Edge count",
+    "isolate_count": "Isolate count",
+    "largest_component": "Largest component size",
+    "component_count": "Component count",
+    "mutual_dyads": "Mutual-dyad count",
+    "triangle_count": "Triangle count",
+    "mean_first_mode_shared_neighbor_overlap": "Mean first-mode shared-neighbor overlap",
+    "mean_second_mode_shared_neighbor_overlap": "Mean second-mode shared-neighbor overlap",
+}
+
+
+def _auxiliary_statistic_label(statistic: Any) -> str:
+    """Convert stable engine keys into methodologically explicit labels."""
+    value = str(statistic)
+    return AUXILIARY_STATISTIC_LABELS.get(value, value.replace("_", " ").title())
+
 
 def _read_upload(uploaded: Any) -> pd.DataFrame:
     """Read a UTF-8 CSV upload without guessing data transformations."""
@@ -306,6 +323,7 @@ def _auxiliary_panel(result: dict[str, Any]) -> None:
         st.error(f"The auxiliary simulation checks were unavailable: {auxiliary['message']}")
         return
     data = pd.DataFrame(auxiliary["summaries"])
+    data["statistic"] = data["statistic"].map(_auxiliary_statistic_label)
     data = data.rename(
         columns={
             "statistic": "Omitted/substantive statistic",
@@ -335,6 +353,10 @@ def _record(
     coefficient_table = pd.DataFrame(result["coefficients"]).to_markdown(index=False)
     warnings = "\n".join(f"- {item}" for item in result["diagnostic_flags"]) or "- No diagnostic flags were returned by R."
     gof_titles = ", ".join(item["title"] for item in result["gof"].get("tables", []))
+    auxiliary_titles = ", ".join(
+        _auxiliary_statistic_label(item["statistic"])
+        for item in result["auxiliary_simulation_checks"].get("summaries", [])
+    )
     return f"""# Session 1.2 ERGM computation and diagnostic record
 
 ## Dataset and support
@@ -358,7 +380,7 @@ def _record(
 ## Standard diagnostic family completed
 - **MCMC retained sample size:** {result['mcmc_diagnostics']['sample_size']}
 - **GOF panels:** {gof_titles or 'Unavailable'}
-- **Auxiliary simulated checks:** {', '.join(item['statistic'] for item in result['auxiliary_simulation_checks'].get('summaries', [])) or 'Unavailable'}
+- **Auxiliary simulated checks:** {auxiliary_titles or 'Unavailable'}
 
 ## Diagnostic flags and warnings
 {warnings}
@@ -563,7 +585,7 @@ def render_session1_2() -> None:
         st.latex(r"\Pr_{\theta}(Y=y)=\frac{\exp\{\eta(\theta)^{\mathsf T}g(y)\}}{\kappa\{\eta(\theta)\}}")
         st.latex(r"U(\theta)=D_{\eta}(\theta)^{\mathsf T}\left[g(y)-\mathbb{E}_{\theta}\{g(Y)\}\right]")
         st.caption(
-            "When the natural parameter is a nonlinear lower-dimensional function of the model parameter, the ERGM is curved. The score condition is projected through the Jacobian; it is not a componentwise equality of every underlying configuration count.")
+            "A curved ERGM has a natural parameter η(θ) in R^q that depends nonlinearly on a lower-dimensional parameter θ in R^p, typically with p < q. The score condition is projected through the Jacobian; it is not a componentwise equality of every underlying configuration count.")
     with worked:
         _worked_examples()
     with byod:
@@ -589,4 +611,11 @@ def render_session1_2() -> None:
         st.markdown("### Interpretation rule")
         st.write(
             "The simulation checks evaluate compatibility with the fitted graph distribution on the stated support. They are not a held-out classifier score, a causal validation, or a mechanical instruction to add terms until every observed statistic is reproduced."
+        )
+        st.markdown("### Computation boundaries")
+        st.markdown(
+            "- **Degeneracy:** a model distribution places most probability on a relatively small set of graph configurations, often far from the observed network; it is not merely an estimation warning.\n"
+            "- **Finite-MLE nonexistence:** the observed sufficient-statistic vector lies on the relevant convex-support boundary, so an ordinary finite canonical maximum-likelihood estimate does not exist.\n"
+            "- **MCMC traces:** the standard diagnostic chain is over networks and their retained statistics. Parameter trajectories may arise separately when an estimation procedure updates parameters iteratively.\n"
+            "- **Information criteria:** the app does not treat BIC as an automatic selector. For a single dependent network, its N is not uniquely determined by the ERGM likelihood; actors or admissible dyads require an explicit asymptotic justification."
         )

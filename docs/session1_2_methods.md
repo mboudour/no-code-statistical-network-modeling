@@ -10,7 +10,7 @@ For a curved exponential family,
 \Pr_{\theta}(Y=y)=\frac{\exp\{\eta(\theta)^{\mathsf T}g(y)\}}{\kappa\{\eta(\theta)\}},
 \]
 
-where \(\eta(\theta)\) is a nonlinear natural-parameter map. With Jacobian \(D_\eta(\theta)\), the relevant curved-model estimating condition is the **projected score**
+where \(\eta(\theta)\in\mathbb{R}^q\) is a nonlinear natural-parameter map of \(\theta\in\mathbb{R}^p\), typically with \(p<q\). The defining feature is the nonlinear restriction of the natural-parameter space, not an unconditional dimension inequality. With Jacobian \(D_\eta(\theta)\), the relevant curved-model estimating condition is the **projected score**
 
 \[
 U(\theta)=D_\eta(\theta)^{\mathsf T}\left[g(y)-\mathbb{E}_\theta\{g(Y)\}\right],
@@ -53,10 +53,10 @@ Every completed Session 1.2 fit returns the following, rather than a minimal sub
 
 1. **MCMC diagnostics:** retained sufficient-statistic trace plots, autocorrelation plots, and sampled-statistic distributions.
 2. **Simulation-based GOF:**
-   - undirected one-mode — degree, geodesic distance, edgewise shared partners, dyadwise shared partners;
+   - undirected one-mode — degree, geodesic-distance, edgewise shared-partner, and dyadwise shared-partner distributions;
    - directed one-mode — in-degree, out-degree, directed geodesic distance, triad census;
    - bipartite — first-mode degree, second-mode degree, bipartite geodesic distance.
-3. **Additional simulation checks:** edges, isolates, component count, largest component, and a support-specific omitted statistic: triangles for undirected one-mode, mutual dyads for directed one-mode, or mode-specific two-path overlap for bipartite networks.
+3. **Additional simulation checks:** edges, isolates, component count, largest component, and a support-specific omitted statistic: triangles for undirected one-mode, mutual dyads for directed one-mode, or first-mode and second-mode shared-neighbor overlap for bipartite networks.
 
 The app displays observed values against simulated means and 95% empirical envelopes. It states explicitly that an optimizer result or a false failure flag is **not proof of convergence**.
 
@@ -65,7 +65,7 @@ The app displays observed values against simulated means and 95% empirical envel
 The interface distinguishes:
 
 - MCMC mixing from MCMLE convergence;
-- finite-MLE/boundary concerns from degeneracy;
+- finite-MLE/boundary concerns from degeneracy: a finite canonical MLE can fail when the observed sufficient-statistic vector lies on the relevant convex-support boundary, whereas degeneracy is a model distribution concentrated on a relatively small set of graph configurations, often far from the observed network;
 - simulation-based generative GOF from prediction;
 - conditional ERGM coefficient interpretation from causal inference.
 

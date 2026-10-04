@@ -35,6 +35,20 @@ A structured independent review identified three useful missing definitions; the
 
 The review also questioned the leading \(e^{\alpha}\) factor in the displayed GWD, GWESP, and GWDSP formulas. That proposed correction was **not applied**, because the supplied source guide, **§2.2.2**, explicitly defines all three statistics with the leading \(e^{\alpha}\) scaling. The deck is therefore source-faithful and already states that alternative software parameterizations require an explicit decay convention.
 
+## Precision corrections applied after subsequent review
+
+The following seven refinements were applied without adding slides or changing the five published worked-network formulas:
+
+1. The curved-ERGM definition now says that \(\eta(\theta)\in\mathbb{R}^q\) depends nonlinearly on \(\theta\in\mathbb{R}^p\), **typically** with \(p<q\), rather than treating \(q>p\) as an unconditional defining requirement.
+2. Degeneracy is now defined as a model distribution that concentrates most probability on a relatively small set of configurations, often far from the observed network.
+3. Finite-MLE nonexistence now refers precisely to the observed sufficient-statistic vector on the relevant convex-support boundary.
+4. MCMC trace plots are now described primarily as retained **network-statistic** traces; parameter trajectories are distinguished as a possible iterative-estimation display.
+5. The undirected GOF slide explicitly identifies edgewise and dyadwise **shared-partner distributions** as observed-versus-simulated distributional checks.
+6. Bipartite overlap is now named generically as first-mode and second-mode **shared-neighbor overlap**, with the Davis women/event examples only as illustrations.
+7. The BIC caution now states that no unique \(N\) is determined by a single dependent-network ERGM likelihood; any choice of actors or admissible dyads requires an explicit asymptotic justification.
+
+The public app and computation records now use the same terminology. In particular, its bipartite simulation output labels first-mode and second-mode shared-neighbor overlap explicitly, and its methods tab distinguishes curvature, degeneracy, finite-MLE nonexistence, network-statistic MCMC traces, and the BIC boundary.
+
 ## Mechanical verification
 
 - **Beamer source frames:** 49 authored frames, exceeding the required 35 substantive-frame minimum.

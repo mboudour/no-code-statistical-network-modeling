@@ -94,6 +94,39 @@ def test_session12_engine_returns_full_undirected_audit() -> None:
     }
 
 
+def test_session12_engine_uses_generic_bipartite_overlap_labels() -> None:
+    status = engine_status()
+    if not status["available"]:
+        pytest.skip(status["reason"])
+    spec = load_catalog()["davis_affiliation"]
+    nodes, edges = load_example(spec)
+    result = fit_session12_ergm(
+        {
+            "network": {"directed": False, "bipartite": True},
+            "nodes": nodes.to_dict(orient="records"),
+            "edges": edges[["source", "target"]].to_dict(orient="records"),
+            "formula": {
+                "terms": ["edges", "b1degree2"],
+                "curve_controls": {"fixed_decay": True, "decay": 0.5},
+            },
+            "controls": {
+                "seed": 20261028,
+                "mcmc_burnin": 1200,
+                "mcmc_interval": 200,
+                "mcmle_maxit": 4,
+                "mcmc_return_stats": 64,
+                "gof_nsim": 10,
+            },
+        },
+        timeout_seconds=600,
+    )
+    names = {
+        item["statistic"] for item in result["auxiliary_simulation_checks"]["summaries"]
+    }
+    assert "mean_first_mode_shared_neighbor_overlap" in names
+    assert "mean_second_mode_shared_neighbor_overlap" in names
+
+
 def test_session12_page_makes_all_worked_choices_visible() -> None:
     source = (PROJECT_DIR / "app" / "session1_2_ui.py").read_text()
     assert 'st.radio(' in source
@@ -101,3 +134,13 @@ def test_session12_page_makes_all_worked_choices_visible() -> None:
     assert "no hidden dropdown is used" in source
     assert "recipe_by_title = {recipe.title: recipe for recipe in WORKED_RECIPES}" in source
     assert "list(recipe_by_title)" in source
+
+
+def test_session12_computation_uses_precise_trace_and_bipartite_labels() -> None:
+    interface = (PROJECT_DIR / "app" / "session1_2_ui.py").read_text()
+    engine = (PROJECT_DIR / "r" / "fit_session1_2_ergm.R").read_text()
+    assert "standard diagnostic chain is over networks and their retained statistics" in interface
+    assert "mean_first_mode_shared_neighbor_overlap" in interface
+    assert "mean_second_mode_shared_neighbor_overlap" in interface
+    assert "mean_first_mode_shared_neighbor_overlap" in engine
+    assert "mean_second_mode_shared_neighbor_overlap" in engine

@@ -29,8 +29,8 @@ WORKED_RECIPES: tuple[Session12Recipe, ...] = (
         curved_terms=("gwdegree",),
         allow_free_decay=True,
         diagnostic_focus=(
-            "MCMC trace, autocorrelation, and sampled-statistic distribution",
-            "degree, geodesic distance, edgewise shared partners, and dyadwise shared partners",
+            "MCMC traces, autocorrelation, and sampled-statistic distributions",
+            "degree, geodesic-distance, edgewise shared-partner, and dyadwise shared-partner distributions",
             "isolate count, component sizes, and triangle count as omitted structural checks",
         ),
         support_note="Keep all 16 declared families, including the five isolates. The undirected binary support is the observed business-tie encoding, not a directed flow network.",
@@ -44,7 +44,7 @@ WORKED_RECIPES: tuple[Session12Recipe, ...] = (
         curved_terms=("gwidegree",),
         allow_free_decay=True,
         diagnostic_focus=(
-            "MCMC trace, autocorrelation, and sampled-statistic distribution",
+            "MCMC traces, autocorrelation, and sampled-statistic distributions",
             "directed in-degree and out-degree distributions, reachability distance, and triad census",
             "mutual-dyad count, components, and isolates as simulation-based checks",
         ),
@@ -59,7 +59,7 @@ WORKED_RECIPES: tuple[Session12Recipe, ...] = (
         curved_terms=(),
         allow_free_decay=False,
         diagnostic_focus=(
-            "MCMC trace, autocorrelation, and sampled-statistic distribution",
+            "MCMC traces, autocorrelation, and sampled-statistic distributions",
             "directed in-degree and out-degree distributions, reachability distance, and triad census",
             "reciprocity, weak components, isolates, and selected omitted attribute-mixing checks",
         ),
@@ -74,9 +74,9 @@ WORKED_RECIPES: tuple[Session12Recipe, ...] = (
         curved_terms=(),
         allow_free_decay=False,
         diagnostic_focus=(
-            "MCMC trace, autocorrelation, and sampled-statistic distribution",
+            "MCMC traces, autocorrelation, and sampled-statistic distributions",
             "first-mode and second-mode degree distributions plus bipartite geodesic distances",
-            "component sizes, isolates, and mode-specific two-path overlap checks",
+            "component sizes, isolates, and first-mode and second-mode shared-neighbor overlap checks",
         ),
         support_note="Preserve the woman--event incidence support: within-mode dyads are structural zeros. The app audits the original bipartite graph and never replaces it with a one-mode projection.",
         interpretation_limit="This worked example demonstrates a valid Session 1.2 decision: a diagnostic finding can rule out a proposed curved refinement. The result is not an invitation to fit unipartite closure terms.",
@@ -89,8 +89,8 @@ WORKED_RECIPES: tuple[Session12Recipe, ...] = (
         curved_terms=("gwesp",),
         allow_free_decay=False,
         diagnostic_focus=(
-            "MCMC trace, autocorrelation, and sampled-statistic distribution",
-            "degree, geodesic distance, edgewise shared partners, and dyadwise shared partners",
+            "MCMC traces, autocorrelation, and sampled-statistic distributions",
+            "degree, geodesic-distance, edgewise shared-partner, and dyadwise shared-partner distributions",
             "triangle count, components, and isolates as further simulated structural checks",
         ),
         support_note="Use the undirected binary first-period sociational relation for the documented 39-worker panel. It is neither valued interaction data nor a temporal sequence.",

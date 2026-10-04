@@ -213,8 +213,8 @@ auxiliary_statistics <- function(nw) {
     second_overlap <- t(block) %*% block
     first_pairs <- first_overlap[upper.tri(first_overlap)]
     second_pairs <- second_overlap[upper.tri(second_overlap)]
-    result$mean_first_mode_overlap <- if (length(first_pairs)) mean(first_pairs) else 0
-    result$mean_second_mode_overlap <- if (length(second_pairs)) mean(second_pairs) else 0
+    result$mean_first_mode_shared_neighbor_overlap <- if (length(first_pairs)) mean(first_pairs) else 0
+    result$mean_second_mode_shared_neighbor_overlap <- if (length(second_pairs)) mean(second_pairs) else 0
   } else {
     result$triangle_count <- sum(diag(adjacency %*% adjacency %*% adjacency)) / 6
   }

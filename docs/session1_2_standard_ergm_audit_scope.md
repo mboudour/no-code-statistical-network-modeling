@@ -6,7 +6,7 @@ Session 1.2 will implement a **standard ERGM analysis**, not a reduced or fixed 
 
 ## Estimation and MCMC diagnostics
 
-For every fitted model, the app will provide the standard MCMC diagnostic output available from the `ergm` R ecosystem. This includes trace plots for monitored parameter or network statistics, autocorrelation plots, and sampled-statistic distribution or density summaries. The interface will preserve the estimation controls, diagnostic warnings, and a reproducible record of the diagnostic run.
+For every fitted model, the app will provide the standard MCMC diagnostic output available from the `ergm` R ecosystem. This includes trace plots for monitored network statistics, autocorrelation plots, and sampled-statistic distribution or density summaries. Parameter trajectories can also arise in estimation procedures that update parameters iteratively, but the standard ERGM MCMC diagnostic chain is fundamentally over networks and their statistics. The interface will preserve the estimation controls, diagnostic warnings, and a reproducible record of the diagnostic run.
 
 ## Simulation-based goodness-of-fit
 
