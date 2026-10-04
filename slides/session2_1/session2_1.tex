@@ -1,0 +1,520 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+\usetheme{CambridgeUS}
+\usecolortheme{default}
+\definecolor{sapphire}{rgb}{0.03,0.15,0.4}
+\definecolor{nupurple}{RGB}{78,42,132}
+\definecolor{nugray}{RGB}{99,102,106}
+\definecolor{orange}{rgb}{1,0.75,0}
+\setbeamercolor{title}{fg=nupurple}
+\setbeamercolor{frametitle}{fg=nupurple}
+\setbeamercolor{structure}{fg=nupurple}
+\setbeamercolor{section in head/foot}{bg=nupurple,fg=white}
+\setbeamercolor{subsection in head/foot}{bg=nugray,fg=white}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{itemize items}[circle]
+\setbeamertemplate{itemize subitem}[triangle]
+\setbeamertemplate{blocks}[rounded][shadow=true]
+\setbeamercolor{block title}{fg=white,bg=nupurple}
+\setbeamercolor{block body}{bg=nupurple!7,fg=black}
+\setbeamercolor{alertblock title}{fg=white,bg=orange!55!black}
+\setbeamercolor{alertblock body}{bg=orange!12,fg=black}
+\setbeamercolor{exampleblock title}{fg=white,bg=teal!65!black}
+\setbeamercolor{exampleblock body}{bg=teal!8,fg=black}
+\setbeamersize{text margin left=0.65cm,text margin right=0.65cm}
+\setlength{\tabcolsep}{5pt}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{ragged2e}
+\usepackage{amsmath,amsfonts,amssymb,mathtools,bm}
+\usepackage{graphicx,booktabs,tabularx,multicol,array,float}
+\usepackage{hyperref,pdfpages,xcolor,tcolorbox,tikz}
+\usetikzlibrary{shapes,fit,arrows.meta,positioning}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prb}{\mathbb{P}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\ind}{\mathbf{1}}
+\newcommand{\term}[1]{\textbf{\color{nupurple}#1}}
+\newcommand{\set}[1]{\left\{#1\right\}}
+\title[A Guide to Statistical Network Modeling -- Session 2.1]{A Guide to Statistical Network Modeling}
+\subtitle{Session 2.1: Temporal ERGMs for Network Change}
+\author[Moses Boudourides]{%
+\begin{tabular}{c}
+{\color{nupurple}\Large Moses Boudourides}\\[0.6em]
+{\normalsize \textit{Faculty, Graduate Program on Data Science}}\\
+{\normalsize \textit{Northwestern University}}\\[0.6em]
+\href{mailto:Moses.Boudourides@northwestern.edu}{\textcolor{teal}{\small\texttt{Moses.Boudourides@northwestern.edu}}}
+\end{tabular}}
+\date[October 28, 2026]{\begin{tabular}{c}
+\Large{\href{https://instats.org/}{\texttt{\textcolor{teal}{instats}}} Seminar}\\[0.5em]
+\small{Wednesday, October 28, 2026 \quad 4:30--6:00 PM GMT (90 minutes)}
+\end{tabular}}
+\begin{document}
+\includepdf[pages={1}]{first_slide.pdf}
+\includepdf[pages={2}]{second_slide.pdf}
+\begin{frame}[plain]\titlepage\end{frame}
+
+\begin{frame}{Companion computations and reproducibility}
+\begin{itemize}
+\item \term{Public repository:} \href{https://github.com/mboudour/no-code-statistical-network-modeling}{\textcolor{blue}{\underline{github.com/mboudour/no-code-statistical-network-modeling}}}.
+\item \term{Companion Streamlit app hosted on Render:} \href{https://no-code-statistical-network-modeling.onrender.com/}{\textcolor{blue}{\underline{no-code-statistical-network-modeling.onrender.com}}}.
+\item Open \term{Session 2.1} and choose one of \term{five visible public temporal-network workflows}; each exposes its waves, joint risk sets, transition counts, stated formula, conditional simulations, and downloadable audit record.
+\item \term{Computational boundary:} the app fits a first-order \emph{lag-only} temporal ERGM whose included statistics depend on the preceding observed network; it does not silently fit a separable formation--dissolution model.
+\item \term{This session:} longitudinal design, conditional transition distributions, temporal dependence, risk sets, estimation distinctions, and transition-specific simulation checks.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Learning objectives}
+By the end of this session, we will be able to:
+\begin{itemize}
+\item define a \term{discrete-time temporal exponential-family random graph model} (TERGM) as a conditional distribution for an observed network transition;
+\item distinguish \term{persistent non-ties}, \term{formations}, \term{dissolutions}, and \term{persistent ties} on a declared risk set;
+\item formulate first-order persistence, delayed reciprocity, and lagged two-path effects without confusing them with contemporaneous structure;
+\item state the observation, support, homogeneity, and temporal-alignment assumptions required for a defensible transition model; and
+\item audit a fitted transition model through estimation diagnostics and conditional simulations rather than a coefficient table alone.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Session route}
+\begin{enumerate}
+\item \term{Design:} repeated networks, observation times, actor composition, risk sets, and covariate timing.
+\item \term{Model:} conditional transition probability, Markov order, temporal statistics, and parameter homogeneity.
+\item \term{Interpretation:} persistence, delayed effects, current structure, and the limits of temporal ordering.
+\item \term{Estimation and audit:} conditional likelihood, Monte Carlo likelihood, pseudo-likelihood, transition replication, and simulations.
+\item \term{No-code practice:} five public longitudinal networks and a constrained repeated-network BYOD workflow.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{What changes when a network is observed repeatedly?}
+\begin{itemize}
+\item A static ERGM assigns a probability distribution to \term{one graph-valued outcome} on a declared support.
+\item A TERGM assigns a conditional probability distribution to the next observed network \term{given network history} and pre-transition information.
+\item The response at time $t$ is the whole network $Y^t$, not a collection of independently observed dyads.
+\item Temporal data add a second dependence dimension: a current tie can be associated with earlier ties while current ties may also be structurally interdependent.
+\item \alert{Key distinction:} observing several snapshots does not itself determine the relevant time scale, risk set, or dynamic estimand.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Longitudinal network data}
+\begin{itemize}
+\item Let $Y^1,\ldots,Y^T$ denote networks observed at ordered discrete times $t=1,\ldots,T$.
+\item Let $V^t$ be the actors present at time $t$ and let $D_t$ be the \term{admissible dyad set} at that time.
+\item A binary entry $Y^t_{ij}=1$ records a tie under the stated measurement rule; $Y^t_{ij}=0$ is a non-tie only when $(i,j)\in D_t$ is observed.
+\item The network boundary, node identifiers, directionality, mode structure, missingness, and meaning of a tie must be comparable enough to define a transition.
+\item Repeated relation layers, cumulative networks, and a single weighted aggregate are \term{not} automatically longitudinal network observations.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The support can change with time}
+\begin{itemize}
+\item The support at wave $t$ is $\mathcal{Y}_t$, the set of networks allowed by $V^t$, $D_t$, structural zeros, and any design constraints.
+\item Actor entry and exit can change $V^t$; unavailable dyads then leave the risk set rather than becoming observed zeros.
+\item A bipartite network has within-mode structural zeros at every wave; these are not absent relations that a temporal model may form.
+\item Fixed-outdegree nomination designs constrain possible current networks differently from an unconstrained Bernoulli tie process.
+\item \term{Support consistency} is a modeling decision: it must be documented before calculating persistence or transition likelihoods.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{First-order TERGM transition distribution}
+For a binary network with pre-transition covariates $X^t$,
+\[
+\Prb_{\theta}\!\left(Y^t=y^t\mid Y^{t-1}=y^{t-1},X^t\right)
+=
+\frac{\exp\!\left\{\theta^{\mathsf T}g(y^t,y^{t-1},X^t)\right\}}
+{\kappa_t(\theta;y^{t-1},X^t)}.
+\]
+\begin{itemize}
+\item $g(\cdot)$ is a vector of \term{transition statistics} that may involve the current network, the preceding network, and pre-transition covariates.
+\item $\theta$ is a parameter vector; its components are conditional associations under the complete stated transition model.
+\item The probability is defined only on the admissible support $\mathcal{Y}_t$.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The transition normalizing constant}
+\[
+\kappa_t(\theta;y^{t-1},X^t)
+=
+\sum_{z\in\mathcal{Y}_t}
+\exp\!\left\{\theta^{\mathsf T}g(z,y^{t-1},X^t)\right\}.
+\]
+\begin{itemize}
+\item The sum ranges over all networks $z$ that are allowed at the current wave, given its support restrictions.
+\item It depends on the prior observed network and may vary across transitions even when parameters are homogeneous.
+\item With contemporaneous structural dependence, evaluating $\kappa_t$ is generally computationally intractable for realistic networks.
+\item This intractability motivates Monte Carlo likelihood methods; it does \emph{not} license replacing unavailable dyads with zeros.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Conditional likelihood across observed transitions}
+Under a first-order Markov specification, conditional on $Y^1$,
+\[
+L(\theta\mid y^1,\ldots,y^T,X)
+=
+\prod_{t=2}^{T}
+\Prb_{\theta}\!\left(Y^t=y^t\mid Y^{t-1}=y^{t-1},X^t\right).
+\]
+\begin{itemize}
+\item The factorization follows from the specified transition law and conditioning on the observed history.
+\item It does \term{not} say that transitions are independent unconditional replicates: adjacent transitions share an observed network state.
+\item If the same $\theta$ is used at each transition, the model imposes \term{parameter homogeneity} across the selected observation intervals.
+\item Period indicators or interactions can relax homogeneity, but few observed transitions sharply limit their identification.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Markov order is a modeling restriction}
+\begin{itemize}
+\item A first-order TERGM conditions on $Y^{t-1}$; this does not prove that earlier history is irrelevant in the social process.
+\item An order-$K$ model conditions on $Y^{t-1},\ldots,Y^{t-K}$ and contributes $T-K$ transitions to the conditional likelihood.
+\item Higher-order lags are useful only when the observation interval and substantive theory make them meaningful.
+\item Consecutive snapshots are often highly correlated, so adjacent lagged statistics can be nearly collinear.
+\item \alert{Discipline:} choose lag order from theory and time scale, not unrestricted search over many available histories.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Homogeneous and heterogeneous transitions}
+\begin{itemize}
+\item A \term{homogeneous TERGM} uses the same parameter vector $\theta$ for every modeled transition.
+\item This means that the conditional association represented by a statistic is assumed constant over the included observation intervals.
+\item A period-specific parameter or period-by-statistic interaction permits a stated form of temporal heterogeneity.
+\item With only a few transitions, an elaborate heterogeneous model can be weakly identified even when the network contains many dyads.
+\item Apparent temporal change may instead arise from changing risk sets, measurement protocols, missingness, or observation intervals.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Observation intervals define the estimand}
+\begin{itemize}
+\item A monthly and a yearly network panel can encode different effective processes, even with the same actors and relation.
+\item At short intervals, most dyads may be unchanged and a stability effect can dominate every other term.
+\item At long intervals, formation and dissolution may both occur between observations; the endpoint transition loses their order and duration.
+\item A coefficient is therefore conditional on the stated \term{observation schedule}, not an automatically portable continuous-time rate.
+\item Unequal intervals should be represented, restricted, or justified; silently treating them as equal changes the model interpretation.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Transition-specific dyadic risk sets}
+\begin{itemize}
+\item For a transition $t-1\to t$, let $D_{t-1,t}=D_{t-1}\cap D_t$ be the dyads observed and admissible at both endpoints.
+\item Only dyads in $D_{t-1,t}$ can be classified as formations, dissolutions, or persistent ties/non-ties.
+\item A person absent at one endpoint does not generate a tie dissolution with every other person.
+\item Incidental missingness is not evidence of a non-tie; structural unavailability is not missing-at-random zero data.
+\item In Session 2.1, every computation displays the joint risk-set size before fitting a transition model.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Actor composition is part of the model}
+\begin{itemize}
+\item \term{Actor turnover} occurs when nodes enter, leave, or are not observable at a wave.
+\item A changing population can create apparent tie turnover if actor absence is incorrectly coded as a zero relation.
+\item A balanced continuing-actor subset can simplify a model, but it changes the target population and may discard relevant transition information.
+\item Alternatively, a transition-specific risk set preserves observed actors while excluding unavailable dyads.
+\item The chosen approach must be reported along with the network boundary and the interpretation of the resulting parameters.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Missingness is neither a tie nor a non-tie}
+\begin{itemize}
+\item A response entry may be missing because an actor did not respond, a dyad was not measured, or a record was unavailable.
+\item A structural zero is an impossible dyad under the design; a missing value is an unobserved outcome; an observed zero is a measured non-tie.
+\item These three states have different implications for $\mathcal{Y}_t$, $D_t$, and the transition counts.
+\item Recoding all non-one values to zero inflates non-tie stability and can reverse a substantive temporal conclusion.
+\item The app requires an explicit at-risk-dyad table whenever node presence alone does not identify observed dyads.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Time-varying covariates require temporal alignment}
+\begin{itemize}
+\item Let $X^t$ denote covariates measured at or before the transition $t-1\to t$.
+\item A sender, receiver, dyadic, or interaction effect must specify whether it uses $X^{t-1}$, $X^t$, or a documented interval summary.
+\item Using a covariate measured after a transition as a predictor creates a temporal-ordering problem.
+\item If an actor or covariate is unavailable at a wave, the affected transition contribution must be handled explicitly.
+\item Temporal precedence narrows some interpretations, but it does not by itself eliminate confounding or establish causality.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Four dyadic transition counts}
+For $(i,j)\in D_{t-1,t}$, define
+\[
+N_{ab}^{(t)}=\sum_{(i,j)\in D_{t-1,t}}
+\ind\!\left\{y_{ij}^{t-1}=a,\;y_{ij}^{t}=b\right\},\qquad a,b\in\set{0,1}.
+\]
+\begin{itemize}
+\item $N_{00}^{(t)}$: persistent non-ties; $N_{01}^{(t)}$: formations.
+\item $N_{10}^{(t)}$: dissolutions; $N_{11}^{(t)}$: persistent ties.
+\item These are descriptive transition summaries on the declared joint risk set, before imposing a parametric TERGM.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Overall stability is not tie persistence}
+\begin{itemize}
+\item \term{Overall dyadic stability} is $N_{00}^{(t)}+N_{11}^{(t)}$; it counts unchanged zeros and unchanged ones.
+\item \term{Tie persistence} is $N_{11}^{(t)}$ or, as a rate, $N_{11}^{(t)}/\{N_{10}^{(t)}+N_{11}^{(t)}\}$.
+\item In sparse networks, $N_{00}^{(t)}$ can dominate stability even when many existing ties dissolve.
+\item Therefore a high stability statistic is not evidence that existing relationships are durable.
+\item Separate reporting of all four counts prevents an undirected claim of ``network persistence'' from concealing this distinction.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Three sources of temporal structure}
+\begin{itemize}
+\item \term{Contemporaneous structure:} a statistic involving only $Y^t$, such as current density or current closure.
+\item \term{Memory:} a statistic relating $Y^t$ to $Y^{t-1}$, such as a same-dyad lagged tie.
+\item \term{History interaction:} a current tie associated with a prior reverse tie, prior two-path, or pre-transition covariate.
+\item These sources can coexist in a general TERGM, but their meanings and computational demands differ.
+\item A lagged term does not automatically account for every inherited feature of the preceding network.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Lagged same-dyad persistence}
+A common first-order statistic is
+\[
+g_{\mathrm{mem}}(y^t,y^{t-1})=\sum_{(i,j)\in D_{t-1,t}} y_{ij}^{t}y_{ij}^{t-1}.
+\]
+\begin{itemize}
+\item It counts current ties that were ties at the preceding observed wave.
+\item Conditional on the other model terms, a positive coefficient increases the conditional log-odds of a current tie when the same prior tie was present.
+\item It is not a duration model: unobserved within-interval changes remain latent.
+\item A large persistence effect can absorb inertia that would otherwise be incorrectly attributed to current degree or closure structure.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Delayed reciprocity in a directed network}
+For a directed relation, a delayed-reciprocity statistic can be
+\[
+g_{\mathrm{drecip}}(y^t,y^{t-1})=\sum_{(i,j)\in D_{t-1,t}} y_{ij}^{t}y_{ji}^{t-1}.
+\]
+\begin{itemize}
+\item It records whether a prior incoming tie $j\to i$ is associated with a current outgoing tie $i\to j$.
+\item It is distinct from \term{contemporaneous mutuality}, which involves $y_{ij}^{t}y_{ji}^{t}$ at the same wave.
+\item It is undefined as a reciprocity mechanism for an undirected response network.
+\item A positive conditional association need not be a behavioral reply: stable dyadic propensities and unmeasured common causes remain possible.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Lagged two-path exposure}
+One possible prior-network exposure is
+\[
+g_{\mathrm{2path}}(y^t,y^{t-1})=
+\sum_{i\ne j}y_{ij}^{t}\sum_{k\ne i,j}y_{ik}^{t-1}y_{kj}^{t-1}.
+\]
+\begin{itemize}
+\item The inner sum counts directed two-path opportunities from $i$ to $j$ in the preceding network.
+\item It asks whether a current tie is conditionally associated with a prior two-path, not whether a current triangle is present.
+\item For an undirected network, the analogous prior shared-neighbor count is symmetric.
+\item This statistic should be included only when its one-wave lag and relation direction have a substantive interpretation.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Do not conflate current closure with inherited closure}
+\begin{itemize}
+\item A current triangle statistic measures a property of $Y^t$ and creates contemporaneous dependence among candidate ties.
+\item A lagged two-path statistic uses $Y^{t-1}$ as fixed history when predicting $Y^t$.
+\item If a network is highly persistent, much current closure may be inherited from prior ties even when no new closure mechanism operates.
+\item Including both terms can be scientifically justified, but their collinearity and separate interpretations require diagnostic attention.
+\item Session 2.1 computes only lagged two-path exposure; it does not present a contemporaneous closure TERGM as if its normalizing constant were trivial.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The current-wave edges baseline}
+\begin{itemize}
+\item An \term{edges} statistic counts current ties on the current transition support.
+\item Conditional on the other terms, its coefficient is a baseline log-odds contribution for a current tie with all included predictors equal to zero.
+\item It is not a universal density-control remedy: a constrained nomination design can make edge count constant, while a changing risk set changes the number of possible dyads.
+\item In an undirected sparse treaty panel, the baseline may be strongly negative; a memory effect is interpreted relative to that baseline.
+\item Baseline terms should be retained or omitted by support logic, not merely because software accepts them.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Temporal ordering does not create causal identification}
+\begin{itemize}
+\item Conditioning on a prior network establishes that the modeled history precedes the current observed network.
+\item It does not rule out latent actor propensities, unmeasured dyadic opportunities, selection, common shocks, or measurement changes.
+\item A TERGM coefficient is therefore a \term{conditional association in a transition distribution} under the declared model and support.
+\item Causal claims require a separate design, treatment definition, interference assumptions, and identification argument.
+\item Avoid replacing ``associated with'' by ``causes'' merely because a predictor is lagged.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Exact conditional likelihood for a restricted lag-only model}
+\begin{itemize}
+\item Suppose every fitted statistic is a function of $Y^{t-1}$ and one candidate current dyad $Y_{ij}^{t}$, with no contemporaneous dependence among current dyads.
+\item Conditional on the observed history and risk set, the transition distribution then factorizes into logistic dyad probabilities.
+\item The resulting conditional logistic likelihood is \term{exact for that restricted TERGM subclass}, not a pseudo-likelihood approximation.
+\item Session 2.1 implements this transparent subclass for public data with limited transitions and reports its boundary in every computation record.
+\item It does not claim to estimate a general TERGM with current triangles, stars, or other coupled current-wave statistics.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Monte Carlo maximum likelihood for general TERGMs}
+\begin{itemize}
+\item With contemporaneous dependence, the transition normalizing constants are generally intractable.
+\item \term{MCMLE} approximates likelihood-based estimating equations using simulated networks under the specified transition model.
+\item Its diagnostics include Monte Carlo error, chain mixing, estimating-equation stability, warnings, and repeated-fit behavior.
+\item A completed optimization routine is not itself evidence that the chain explored the relevant transition distribution.
+\item General TERGM inference also requires enough transition information to support the selected history and structural terms.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Pseudo-likelihood is not Monte Carlo likelihood}
+\begin{itemize}
+\item \term{Pseudo-likelihood} multiplies conditional tie probabilities and avoids the full normalizing constant.
+\item \term{MCMLE} targets the likelihood of the specified graph-valued transition distribution through simulation.
+\item They can produce different estimates and uncertainty statements when current ties are structurally dependent.
+\item Neither approach cures an undefined risk set, a weak observation design, or an unsupported actor-composition assumption.
+\item Reports should name the estimation method rather than using ``TERGM estimation'' as an undifferentiated label.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Temporal replication is not the number of dyads}
+\begin{itemize}
+\item A large network may contain many dyads but only a few observed transitions.
+\item Inference on history effects depends on variation across modeled transitions, risk-set changes, and the assumed dependence structure.
+\item A single Fall-to-Spring transition can illustrate a conditional model but cannot support rich time heterogeneity or reliable transition-block resampling.
+\item Resampling individual dyads treats them as independent temporal replications and is generally inappropriate for a network transition model.
+\item Where enough transitions exist, a \term{whole-transition bootstrap} is a limited sensitivity calculation, not a universal asymptotic guarantee.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Numerical and substantive transition audit}
+\begin{itemize}
+\item Check that each selected term varies on the joint risk set and inspect large coefficients, extreme fitted probabilities, and ill-conditioned information matrices.
+\item Report the observed $N_{00}$, $N_{01}$, $N_{10}$, and $N_{11}$ counts for every modeled interval.
+\item Simulate $Y^t$ conditional on each observed $Y^{t-1}$ and compare observed current tie totals, formations, and tie persistence with simulated distributions.
+\item Inspect whether an apparent lack of fit is concentrated in particular periods, risk-set changes, or low-information intervals.
+\item A successful numerical fit is one component of an audit, not a proof that the chosen transition statistics are scientifically adequate.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{A defensible Session 2.1 workflow}
+\begin{enumerate}
+\item Define the repeated response relation, observation dates, network boundary, and all structural restrictions.
+\item Construct wave-specific node presence and joint at-risk dyads; preserve missing and unavailable states.
+\item Tabulate four transition counts before selecting a TERGM statistic.
+\item State a parsimonious first-order conditional model linked to theory and the observation interval.
+\item Fit with recorded settings, inspect numerical flags, and compare observed transition summaries with conditional simulations.
+\item Report what the data cannot identify, including within-interval ordering, causal effects, and separate formation/dissolution processes.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Worked example: Knecht classroom friendship}
+\begin{itemize}
+\item \term{Data:} four directed binary good-friend nomination waves in a Dutch classroom; one pupil leaves after wave 2.
+\item \term{Risk-set rule:} source codes for missingness and structural nonmembership are excluded; they are never converted into non-ties.
+\item \term{Stated model:} current edges, lagged same-dyad persistence, and delayed reciprocity on dyads observed at both adjacent waves.
+\item \term{Computation:} three transition tables, no transition-block bootstrap, and one-step simulations conditional on each previous nomination network.
+\item \term{Limit:} three transitions provide a compact teaching panel, not a basis for complex lags, influence claims, or continuous-time conclusions.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Worked example: Sampson repeated liking nominations}
+\begin{itemize}
+\item \term{Data:} three directed positive-affect/liking panels among 18 monk-novitiates, distributed as separate public network objects.
+\item \term{Stated model:} edges, lagged persistence, delayed reciprocity, and prior directed two-path exposure.
+\item \term{Temporal distinction:} the two-path predictor is computed from the preceding panel, whereas a current transitive-triad term would be a different contemporaneous specification.
+\item \term{Computation:} two conditional transitions with simulated current tie totals, formations, and persistence.
+\item \term{Limit:} two transitions cannot disentangle a stable dyadic propensity from every possible social response mechanism.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Worked example: Coleman Fall-to-Spring nominations}
+\begin{itemize}
+\item \term{Data:} two directed binary sociometric nomination networks among 73 high-school boys, recorded in Fall 1957 and Spring 1958.
+\item \term{Stated model:} a single conditional Fall-to-Spring transition with edges, persistence, and delayed reciprocity.
+\item \term{Support assumption:} the public array supplies a common roster but no wave-specific presence indicator; fixed risk is stated rather than inferred.
+\item \term{Computation:} descriptive transition counts and conditional simulations; the app withholds a transition-block bootstrap.
+\item \term{Limit:} one transition cannot estimate a temporal trend, period heterogeneity, lag-two memory, or robust temporal uncertainty.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Worked example: COW annual formal alliances}
+\begin{itemize}
+\item \term{Data:} eleven annual undirected binary alliance networks, 1960--1970, built from active COW treaty dyads and annual state-system membership.
+\item \term{Response:} an edge indicates at least one active formal alliance for an unordered pair; it is not treaty multiplicity, military cooperation, or defense-only commitment.
+\item \term{Risk-set rule:} state nonmembership is structurally unavailable, so pre-entry and post-exit dyads are excluded rather than coded as non-alliance.
+\item \term{Stated model:} edges, lagged alliance persistence, and prior shared-partner exposure; ten annual transitions permit a cautious block bootstrap.
+\item \term{Limit:} annual coding obscures within-year ordering and long treaty spells can generate strong persistence without a causal dyadic response.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Worked example: Windsurfers daily interactions}
+\begin{itemize}
+\item \term{Data:} repeated undirected binary daily observed-interaction panels at southern California beaches, with substantial attendance turnover.
+\item \term{Risk-set rule:} only dyads jointly present on adjacent days are modeled; absence from the beach is not an observed non-tie.
+\item \term{Time-gap rule:} the documented missing daily panel is retained as a break; no artificial one-step transition is formed across it.
+\item \term{Stated model:} edges, lagged interaction persistence, and prior shared-neighbor exposure, followed by transition-block simulations and bootstrap checks.
+\item \term{Limit:} daily interaction presence is not a durable friendship outcome, and small joint risk sets constrain detailed structural claims.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Why the Newcomb ranking data are not a worked binary TERGM}
+\begin{itemize}
+\item \term{Data:} repeated complete preference rankings among fraternity members, rather than unconstrained binary tie observations.
+\item A documented top-$k$ dichotomization fixes each respondent's outgoing selections and changes the support to a constrained choice process.
+\item Treating the transformed zeros as ordinary absent friendship ties would misrepresent both measurement and outdegree constraint.
+\item A rank-order or constrained choice model is more faithful to the original response; a binary TERGM requires a separately justified transformation and support.
+\item \alert{Principle:} public availability does not make a data set method-appropriate; exclusion can be a correct modeling decision.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{No-code app navigation}
+\begin{enumerate}
+\item Open the \term{Session 2.1} page of the Streamlit app hosted on Render.
+\item Choose one of the five visible public temporal networks; read its response boundary, support note, method appropriateness, and interpretation limit.
+\item Inspect the wave profile and four-count transition table before running a model.
+\item Run the stated first-order lag-only TERGM with a recorded seed, conditional-simulation count, and, where appropriate, transition-block bootstrap setting.
+\item Review coefficients, numerical flags, transition tables, conditional simulation envelopes, and the downloadable Markdown computation record.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{BYOD: repeated-network upload contract}
+\begin{itemize}
+\item \term{Node-presence table:} \texttt{wave} and \texttt{id}; an optional \texttt{transition\_block} marks a break after a missing panel.
+\item \term{Temporal edge table:} \texttt{wave}, \texttt{source}, and \texttt{target} for observed binary ties.
+\item \term{At-risk-dyad table:} required whenever present actors do not imply that every within-wave dyad was observed.
+\item \term{Declare explicitly:} directionality, wave spacing, actor boundary, structural zeros, missingness, and whether adjacent observed waves define a meaningful one-step interval.
+\item \term{Not accepted silently:} valued/count ties, rank-order outcomes, multiplex layers, unknown support, actor absence as a zero tie, or a missing wave bridged as a transition.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{A reporting checklist for Session 2.1}
+\begin{itemize}
+\item \term{Design:} relation meaning, observation dates, interval comparability, actors, network boundary, directionality, and modes.
+\item \term{Support:} wave-specific presence, structural zeros, missingness rule, joint risk-set construction, and excluded transitions.
+\item \term{Specification:} Markov order, homogeneous/heterogeneous parameters, transition statistics, lag convention, and covariate timing.
+\item \term{Estimation:} method, software version, seed, simulation settings, numerical diagnostics, and treatment of limited transition replication.
+\item \term{Interpretation:} conditional association, conditional simulations, generalization regime, and explicit rejection of unsupported causal or continuous-time claims.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Session 2.1 synthesis}
+\begin{itemize}
+\item A TERGM models a conditional distribution for observed network transitions; it is not simply a static ERGM repeated at several dates.
+\item Risk sets, actor composition, missingness, and observation intervals define the data to which transition statistics apply.
+\item Overall stability, tie persistence, formation, and dissolution are distinct descriptive summaries even before a model is fit.
+\item Lagged statistics encode selected temporal associations; they do not automatically establish causal effects or recover unobserved event histories.
+\item Next: \term{separable TERGMs}, which define distinct formation and persistence/dissolution components on different dyadic risk sets.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{References}
+\footnotesize
+\begin{thebibliography}{99}
+\bibitem{boudourides} Boudourides, M. (2026). \emph{A Guide to Statistical Network Modeling: ERGMs, Temporal ERGMs, and SAOMs}. Seminar guide.
+\bibitem{hanneke} Hanneke, S., Fu, W., and Xing, E. P. (2010). Discrete temporal models of social networks. \emph{Electronic Journal of Statistics}, 4, 585--605.
+\bibitem{leifeld} Leifeld, P., Cranmer, S. J., and Desmarais, B. A. (2018). Temporal exponential random graph models with btergm. \emph{Journal of Statistical Software}, 83, 1--36.
+\bibitem{knecht} Knecht, A. (2008). \emph{Friendship Selection and Friends' Influence}. Utrecht University.
+\bibitem{coleman} Coleman, J. S. (1964). \emph{Introduction to Mathematical Sociology}. Free Press.
+\bibitem{gibler} Gibler, D. M. (2009). \emph{International Military Alliances, 1648--2008}. CQ Press.
+\bibitem{freeman} Freeman, L. C., Freeman, S. C., and Michaelson, A. G. (1988). On human social intelligence. \emph{Journal of Social and Biological Structures}, 11, 415--425.
+\end{thebibliography}
+\end{frame}
+
+\begin{frame}{Questions and discussion}
+\begin{center}
+\Large{Thank you!}\\[2ex]
+\normalsize{Questions?}\\[5ex]
+\href{mailto:Moses.Boudourides@northwestern.edu}{\textcolor{teal}{\small\texttt{Moses.Boudourides@northwestern.edu}}}\\[0.8em]
+\href{mailto:Moses.Boudourides@gmail.com}{\textcolor{teal}{\small\texttt{Moses.Boudourides@gmail.com}}}
+\end{center}
+\end{frame}
+\includepdf[pages={8}]{last_slide.pdf}
+\end{document}

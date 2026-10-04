@@ -11,7 +11,7 @@ st.markdown(
     "This public companion app makes documented network-model computations inspectable without requiring participants to write code. Each session page separates data support, model specification, computation, diagnostics, interpretation, and limits."
 )
 st.info(
-    "Day 1 is available now: open Session 1.1 for foundational static-ERGM specification and fit, or Session 1.2 for curved/stable specifications, MCMC diagnostics, simulation-based goodness of fit, and degeneracy-aware refinement."
+    "Days 1 and 2 are available now: open Session 1.1 for foundational static-ERGM specification and fit; Session 1.2 for curved/stable specifications and the full standard ERGM audit; or Session 2.1 for discrete-time temporal ERGMs with explicit transition risk sets and five public longitudinal-network workflows."
 )
 st.markdown("### Academic principles")
 st.markdown(

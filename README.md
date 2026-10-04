@@ -8,13 +8,14 @@ Public computation and Beamer-material repository for the **instats seminar, A G
 
 ## Interactive Companion App
 
-The **[Streamlit application](https://no-code-statistical-network-modeling.onrender.com/)** is the public no-code companion for the seminar. It provides implemented Day 1 workflows for Sessions 1.1 and 1.2:
+The **[Streamlit application hosted on Render](https://no-code-statistical-network-modeling.onrender.com/)** is the public no-code companion for the seminar. It provides implemented Day 1 workflows for Sessions 1.1 and 1.2, and the Session 2.1 temporal-network workflow:
 
 1. **Five worked public networks per session** — documented static-network examples selected only where that session's stated method is valid for the declared support and data structure.
 2. **Guided model specification** — Session 1.1 provides foundational terms; Session 1.2 adds support-checked geometrically weighted terms, fixed-decay stability models, and bounded single-decay sensitivity fits.
 3. **Standard R/statnet estimation and audit** — reproducible maximum-likelihood estimation through the `network` and `ergm` packages, including the full Session 1.2 MCMC, GOF, and support-specific simulation audit.
-4. **Bring Your Own Data (BYOD)** — node-table and edge-list upload validation that mirrors the worked examples and rejects unsupported valued, temporal, duplicate, or structurally invalid networks.
-5. **Computation record** — a downloadable record of the declared support, stated formula, MCMC settings, diagnostic outputs, warnings, and interpretation boundary.
+4. **Session 2.1 temporal computation** — exactly five public repeated-network workflows, first-order lag-only TERGMs with explicitly constructed joint risk sets, transition-count audits, one-step conditional simulations, and transition-block bootstrap sensitivity checks where temporal replication permits them.
+5. **Bring Your Own Data (BYOD)** — node-table and edge-list upload validation that mirrors the worked examples and rejects unsupported valued, rank-order, multiplex, duplicate, or structurally invalid networks.
+6. **Computation record** — a downloadable record of the declared support, stated formula, settings, diagnostic outputs, warnings, and interpretation boundary.
 
 The public companion will expand session by session as the seminar materials are implemented. It does not run participant-supplied code, and it does not silently recode data or select a model.
 
@@ -43,6 +44,21 @@ The second unit provides:
 - a 49-frame Beamer source deck, plus supplied repeating opening and closing template pages, compiled from the seminar template.
 
 > **Academic boundary:** An ERGM coefficient is a conditional, model-based log-odds contribution on the declared graph support. It is not a marginal tie probability and is not, by itself, a causal effect.
+
+## Current delivery: Day 2 — Session 2.1
+
+### Session 2.1 — Temporal ERGMs for Network Change
+
+The third unit provides:
+
+- exactly five public repeated-network workflows: Knecht classroom friendship, Sampson liking nominations, Coleman Fall-to-Spring nominations, COW annual formal alliances, and Windsurfers daily interactions;
+- explicit wave-specific actor presence, structural availability, missingness, and joint at-risk-dyad logic, including a documented nonbridged missing-panel break in the Windsurfers workflow;
+- an exact conditional logistic calculation for a declared **first-order lag-only TERGM subclass**, with edges, same-dyad memory, directed delayed reciprocity, and/or prior-wave two-path exposure;
+- transition-specific N00/N01/N10/N11 summaries, conditional one-step simulation envelopes, numerical checks, and whole-transition bootstrap sensitivity where enough transitions exist;
+- repeated-network BYOD validation, including optional `transition_block` and at-risk-dyad tables; and
+- a 44-frame Beamer source deck, plus supplied repeating opening and closing template pages.
+
+> **Temporal boundary:** The Session 2.1 computation is not a general TERGM with contemporaneous structural dependence, a Monte Carlo likelihood implementation for such a model, a STERGM formation/dissolution decomposition, a continuous-time model, or a causal analysis. Its scope is stated in [`docs/session2_1_methods.md`](docs/session2_1_methods.md).
 
 ## Day 1 public worked examples
 
@@ -83,7 +99,7 @@ For a public seminar service, use the repository's [`Dockerfile`](Dockerfile) an
 
 Detailed local-validation and Render deployment instructions are in [`docs/docker-deployment.md`](docs/docker-deployment.md).
 
-### 4. Verify the implemented Day 1 units
+### 4. Verify the implemented units
 
 ```bash
 PYTHONPATH=app .venv/bin/pytest -q
@@ -91,6 +107,8 @@ cd slides/session1_1
 pdflatex -interaction=nonstopmode -halt-on-error session1_1.tex
 cd ../session1_2
 pdflatex -interaction=nonstopmode -halt-on-error session1_2.tex
+cd ../session2_1
+pdflatex -interaction=nonstopmode -halt-on-error session2_1.tex
 ```
 
 ## BYOD contract for Session 1.1
@@ -106,13 +124,14 @@ The committed CSV files are reproducibly generated from publicly documented sour
 
 ```bash
 .venv/bin/python scripts/build_session1_1_public_data.py
+.venv/bin/python scripts/build_session2_1_public_data.py
 ```
 
-The script extracts Florentine, Sampson, and Kapferer objects from the installed `ergm` version; downloads the Lazega public archive from the Oxford RSiena source; and reads NetworkX's documented Davis affiliation graph. It checks the documented counts before writing the files.
+The Session 1.1 script extracts Florentine, Sampson, and Kapferer objects from the installed `ergm` version; downloads the Lazega public archive from the Oxford RSiena source; and reads NetworkX's documented Davis affiliation graph. The Session 2.1 script preserves each repeated relation, its relevant support rule, and its documented source rather than pooling waves. It reads public Statnet/RSiena panels and source archives for the COW annual series; each script checks its documented output before writing files.
 
 ## Slides
 
-The Beamer sources and supplied template assets are under [`slides/session1_1/`](slides/session1_1/) and [`slides/session1_2/`](slides/session1_2/). The opening, agenda, and closing template PDFs are retained; all substantive slides use itemized academic content and bold purple key terms. The Session 1.2 computation contract and audit boundary are documented in [`docs/session1_2_methods.md`](docs/session1_2_methods.md).
+The Beamer sources and supplied template assets are under [`slides/session1_1/`](slides/session1_1/), [`slides/session1_2/`](slides/session1_2/), and [`slides/session2_1/`](slides/session2_1/). The opening, agenda, and closing template PDFs are retained; all substantive slides use itemized academic content and bold purple key terms. The Session 1.2 computation contract and audit boundary are documented in [`docs/session1_2_methods.md`](docs/session1_2_methods.md); the Session 2.1 design and computational boundary are documented in [`docs/session2_1_methods.md`](docs/session2_1_methods.md).
 
 ## License and data attribution
 
