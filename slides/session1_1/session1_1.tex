@@ -1,0 +1,591 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+\usetheme{CambridgeUS}
+\usecolortheme{default}
+
+\definecolor{sapphire}{rgb}{0.03,0.15,0.4}
+\definecolor{nupurple}{RGB}{78,42,132}
+\definecolor{nugray}{RGB}{99,102,106}
+\definecolor{orange}{rgb}{1,0.75,0}
+\definecolor{almond}{rgb}{0.94,0.87,0.8}
+\setbeamercolor{title}{fg=nupurple}
+\setbeamercolor{frametitle}{fg=nupurple}
+\setbeamercolor{structure}{fg=nupurple}
+\setbeamercolor{section in head/foot}{bg=nupurple,fg=white}
+\setbeamercolor{subsection in head/foot}{bg=nugray,fg=white}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{itemize items}[circle]
+\setbeamertemplate{itemize subitem}[triangle]
+\setbeamertemplate{blocks}[rounded][shadow=true]
+\setbeamercolor{block title}{fg=white,bg=nupurple}
+\setbeamercolor{block body}{bg=nupurple!7,fg=black}
+\setbeamercolor{alertblock title}{fg=white,bg=orange!55!black}
+\setbeamercolor{alertblock body}{bg=orange!12,fg=black}
+\setbeamercolor{exampleblock title}{fg=white,bg=teal!65!black}
+\setbeamercolor{exampleblock body}{bg=teal!8,fg=black}
+\setbeamersize{text margin left=0.65cm,text margin right=0.65cm}
+\setlength{\tabcolsep}{5pt}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{ragged2e}
+\usepackage{amsmath,amsfonts,amssymb,mathtools,bm}
+\usepackage{graphicx,booktabs,tabularx,multicol,array,float}
+\usepackage{hyperref,pdfpages,xcolor,tcolorbox,tikz}
+\usetikzlibrary{shapes,fit,arrows.meta,positioning}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\ind}{\mathbf{1}}
+\newcommand{\key}[1]{\textbf{\color{nupurple}#1}}
+\newcommand{\term}[1]{\textbf{\color{nupurple}#1}}
+\newcommand{\logit}{\operatorname{logit}}
+
+\title[A Guide to Statistical Network Modeling -- Session 1.1]{A Guide to Statistical Network Modeling}
+\subtitle{Session 1.1: Foundations of Static Exponential-Family Random Graph Models}
+\author[Moses Boudourides]{%
+\begin{tabular}{c}
+{\color{nupurple}\Large Moses Boudourides}\\[0.6em]
+{\normalsize \textit{Faculty, Graduate Program on Data Science}}\\
+{\normalsize \textit{Northwestern University}}\\[0.6em]
+\href{mailto:Moses.Boudourides@northwestern.edu}{\textcolor{teal}{\small\texttt{Moses.Boudourides@northwestern.edu}}}
+\end{tabular}}
+\date[October 28, 2026]{\begin{tabular}{c}
+\Large{\href{https://instats.org/}{\texttt{\textcolor{teal}{instats}}} Seminar}\\[0.5em]
+\small{Wednesday, October 28, 2026 \quad 3:00--4:30 PM GMT (90 minutes)}
+\end{tabular}}
+
+\begin{document}
+\includepdf[pages={1}]{first_slide.pdf}
+\includepdf[pages={2}]{second_slide.pdf}
+\begin{frame}[plain]\titlepage\end{frame}
+
+\begin{frame}{Companion computations and reproducibility}
+\begin{itemize}
+\item \term{Public repository:} \href{https://github.com/mboudour/no-code-statistical-network-modeling}{\textcolor{blue}{\underline{github.com/mboudour/no-code-statistical-network-modeling}}}.
+\item \term{No-code workflow:} select a documented public network, inspect its support and covariates, specify a static ERGM, fit it with the standard \texttt{statnet} engine, and preserve the output record.
+\item \term{Scope of this session:} binary \emph{static} graph distributions; temporal models, curved terms, degeneracy, and full goodness-of-fit analysis are developed in later sessions.
+\item \term{Principle:} an application can make computations reproducible; it cannot determine a credible network boundary, causal interpretation, or model specification automatically.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Learning objectives}
+By the end of this session, we will be able to:
+\begin{itemize}
+\item define a network observation, its \term{support}, and its \term{risk set};
+\item distinguish \term{edge independence}, \term{dyad independence}, and structural dependence;
+\item state the canonical static \term{exponential-family random graph model} (ERGM);
+\item use \term{change statistics} to interpret conditional log-odds;
+\item translate substantive network questions into a modest, documented ERGM specification; and
+\item identify claims that an ERGM output does \emph{not} establish.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Session route}
+\begin{enumerate}
+\item \term{Data and support:} what graph is observed, and which dyads are possible?
+\item \term{Dependence:} why independent-dyad regression is often inadequate.
+\item \term{Static ERGM:} probability law, statistics, parameters, and conditional interpretation.
+\item \term{Specification:} structural and covariate statistics chosen from a research question.
+\item \term{Computation:} likelihood, simulation, pseudolikelihood, and five public-network workflows.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Why statistical network modeling?}
+\begin{itemize}
+\item Conventional regression treats observations as independent conditional on covariates; a \term{network tie} can depend on other ties.
+\item \term{Reciprocity:} $Y_{ij}$ may be informative about $Y_{ji}$.
+\item \term{Closure:} a tie from $i$ to $j$ can be associated with paths through third actors.
+\item \term{Degree heterogeneity:} ties sharing an actor can reflect common activity or popularity processes.
+\item A statistical network model therefore defines a probability distribution for an \term{entire graph}, not an unrelated collection of rows.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Network data: actors, relations, and graphs}
+\begin{itemize}
+\item Let $V=\{1,\ldots,n\}$ be the \term{actor set}; actors can be people, organizations, places, species, or events.
+\item Let $Y_{ij}$ record the relation from $i$ to $j$; for a binary tie, $Y_{ij}\in\{0,1\}$.
+\item The adjacency matrix $Y=(Y_{ij})$ is random; the observed network is its realization $y$.
+\item The \term{unit of probabilistic modeling} is $Y$, while an actor, dyad, or local configuration can enter a statistic of $Y$.
+\item A network question must state the relation, observation window, actor boundary, and whether a tie is directed or valued.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Directed, undirected, and loopless support}
+\begin{itemize}
+\item In a \term{directed} network, $Y_{ij}$ and $Y_{ji}$ are distinct potential ties.
+\item In an \term{undirected} network, $Y_{ij}=Y_{ji}$ and an unordered pair $\{i,j\}$ has one edge variable.
+\item A graph is \term{loopless} when $Y_{ii}=0$; this is common but must be stated rather than assumed universally.
+\item For a directed loopless binary graph, there are $n(n-1)$ potential ordered dyads.
+\item For an undirected loopless binary graph, there are $\binom{n}{2}$ potential unordered dyads.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{One-mode and two-mode networks}
+\begin{itemize}
+\item A \term{one-mode} network has ties among actors in one actor set, such as firms linked to firms.
+\item A \term{two-mode} or \term{bipartite} network has two disjoint modes, such as women connected to events.
+\item Bipartite support admits ties only across modes; within-mode dyads are \term{structural zeros}, not observed absences.
+\item Projecting a bipartite graph to one mode changes the data object, induces dependence, and must not be treated as an innocuous formatting step.
+\item An ERGM specification must use statistics and support appropriate to the network mode structure.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Static is an observation design, not a claim of no change}
+\begin{itemize}
+\item A \term{static ERGM} models the distribution of a network observed at one designated time or aggregation window.
+\item The network may have evolved before observation; a static model does not identify its unobserved sequence of tie changes.
+\item Aggregating contacts over a long window can convert repeated events into a binary ``ever tied'' relation and can conceal duration or ordering.
+\item A static interpretation is appropriate only for a question about the graph distribution at the stated observation design.
+\item Network evolution is treated with TERGMs, STERGMs, and SAOMs in later sessions.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The admissible dyad set and graph support}
+For a loopless graph, define the admissible dyad set
+\[
+D=\begin{cases}
+\{(i,j):i\ne j\}, & \text{directed},\\
+\{(i,j):i<j\}, & \text{undirected}.
+\end{cases}
+\]
+\begin{itemize}
+\item The \term{sample space} $\mathcal{Y}$ is the set of all graph configurations allowed by the design.
+\item With no additional constraints, a binary undirected graph has $|\mathcal{Y}|=2^{\binom n2}$ configurations.
+\item Structural constraints, bipartite mode membership, and forbidden relations alter $\mathcal{Y}$ and therefore alter the probability model.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Network boundary and risk set}
+\begin{itemize}
+\item The \term{boundary} specifies which actors are included in $V$.
+\item The \term{risk set} specifies which dyads could in principle form or be observed during the study design.
+\item Excluding actors who carry relational traffic can distort observed degree, mixing, and closure configurations.
+\item An ERGM parameter is conditional on the selected actor set and support; it is not automatically portable to an unobserved wider network.
+\item Report how actors entered the network and which possible dyads were excluded by design.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Observed zero, missing tie, and structural zero}
+\begin{itemize}
+\item An \term{observed zero} is an admissible dyad recorded as absent.
+\item A \term{missing tie} is an admissible dyad whose state is unobserved; it requires an observation-process assumption or an observed-data treatment.
+\item A \term{structural zero} is a dyad not in the support, such as a within-mode pair in a bipartite network.
+\item Coding missing dyads as zeros can manufacture sparsity and bias structural statistics.
+\item Removing structural zeros after fitting is also incorrect: support must be specified before the likelihood is defined.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Actor and dyadic covariates}
+\begin{itemize}
+\item An \term{actor covariate} $x_i$ is measured on an actor: role, seniority, wealth, group, or behavior.
+\item A \term{dyadic covariate} $x_{ij}$ is measured on a pair: distance, co-membership, exposure, or opportunity.
+\item Covariates must be aligned to the actor identities and observation design that define $Y$.
+\item A covariate measured after the observed relation can be useful descriptively but may be unsuitable as a causal predictor.
+\item ERGMs represent covariates through specified network statistics rather than through a generic row-level regression design matrix.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Descriptive statistics versus generative parameters}
+\begin{itemize}
+\item A \term{descriptive statistic} summarizes the observed graph, for example edge count or clustering coefficient.
+\item A \term{generative statistic} $g_k(Y,X)$ enters a probability model for many possible graphs in $\mathcal{Y}$.
+\item A triangle count observed in $y$ does not by itself imply a positive ERGM closure parameter.
+\item A homophilous observed mixing pattern can reflect group composition, degree heterogeneity, reciprocity, or other modeled features.
+\item ERGM interpretation is therefore \term{conditional on the full specification}, not a one-statistic narrative.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Relational dependence}
+\begin{itemize}
+\item \term{Relational dependence} means that the distribution of one tie can depend on other ties after covariates are considered.
+\item Dependence is not an unspecified residual-correlation adjustment; it is represented through declared graph configurations.
+\item A reciprocity statistic specifies a within-dyad dependence mechanism.
+\item A closure statistic specifies dependence involving triples or longer local configurations.
+\item The substantive task is to choose statistics that encode a plausible relational process while avoiding indiscriminate term accumulation.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Edge independence and dyad independence}
+\begin{itemize}
+\item \term{Edge independence} assumes all admissible edge variables are mutually independent conditional on covariates.
+\item In an undirected binary graph, edge independence and dyad independence coincide because each unordered dyad contains one edge variable.
+\item In a directed graph, \term{dyad independence} allows $(Y_{ij},Y_{ji})$ to be dependent while distinct unordered dyads remain independent.
+\item A reciprocity ERGM can be dyad independent but not edge independent.
+\item This distinction determines which factorization and conditional interpretation are available.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{A local-dependence illustration}
+\begin{itemize}
+\item Under the Frank--Strauss Markov condition for an undirected graph, disjoint-edge variables satisfy
+\[
+Y_{ij}\ \perp\ Y_{kl}\mid Y_{-(ij),(kl)}\qquad\text{when }\{i,j\}\cap\{k,l\}=\varnothing.
+\]
+\item A positive distribution satisfying this condition can be represented using edge, $k$-star, and triangle configurations.
+\item General ERGMs need not impose this particular Markov restriction; they may represent broader or nonlocal dependence.
+\item The selected sufficient statistics, not the acronym ``ERGM,'' carry the substantive dependence assumptions.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The canonical static ERGM}
+\[
+\Pr_{\boldsymbol\theta}(Y=y\mid X)
+=\frac{\exp\{\boldsymbol\theta^{\mathsf T}g(y,X)\}}
+{\kappa(\boldsymbol\theta,X)},
+\qquad
+\kappa(\boldsymbol\theta,X)=\sum_{y'\in\mathcal{Y}}
+\exp\{\boldsymbol\theta^{\mathsf T}g(y',X)\}.
+\]
+\begin{itemize}
+\item $g(y,X)=(g_1,\ldots,g_p)^{\mathsf T}$ is the vector of specified \term{network statistics}.
+\item $\boldsymbol\theta\in\R^p$ is the canonical parameter vector.
+\item $\kappa$ is the \term{normalizing constant}; it assigns total probability one over the selected support.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Why the normalizing constant matters}
+\begin{itemize}
+\item $\kappa(\boldsymbol\theta,X)$ sums over every graph allowed by $\mathcal{Y}$.
+\item Its size grows exponentially in the number of possible dyads; direct enumeration is infeasible except for very small graphs.
+\item The intractable normalizing constant motivates simulation-based estimation and simulation-based diagnostics.
+\item It does \emph{not} disappear from a likelihood merely because the observed graph is represented by an adjacency matrix.
+\item Some comparative expressions are tractable because $\kappa$ cancels, as in graph probability ratios and change-statistic interpretations.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Exponential-family identities}
+Let $\psi(\boldsymbol\theta;X)=\log\kappa(\boldsymbol\theta,X)$. Then, for the canonical family,
+\[
+\nabla_{\boldsymbol\theta}\psi(\boldsymbol\theta;X)=\E_{\boldsymbol\theta}\{g(Y,X)\mid X\},
+\qquad
+\nabla^2_{\boldsymbol\theta}\psi(\boldsymbol\theta;X)=\Var_{\boldsymbol\theta}\{g(Y,X)\mid X\}.
+\]
+\begin{itemize}
+\item The likelihood score compares observed sufficient statistics with their model expectations.
+\item The second identity links curvature with variability of the statistics and expected Fisher information.
+\item These canonical identities require modification for curved parameterizations, treated in Session 1.2.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Probability ratios compare complete graphs}
+For $y_a,y_b\in\mathcal{Y}$ under the same covariates,
+\[
+\frac{\Pr_{\boldsymbol\theta}(Y=y_a\mid X)}
+{\Pr_{\boldsymbol\theta}(Y=y_b\mid X)}
+=\exp\!\left[\boldsymbol\theta^{\mathsf T}\{g(y_a,X)-g(y_b,X)\}\right].
+\]
+\begin{itemize}
+\item The normalizing constant cancels in the ratio.
+\item Parameters assign relative weight to differences in network statistics.
+\item This is a comparison of \term{entire network configurations}, not a marginal probability for a randomly chosen tie.
+\item A one-dyad toggle yields the conditional-logit interpretation on the next slides.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Change statistics}
+For an admissible binary dyad $(i,j)$, let $y^+_{ij}$ and $y^-_{ij}$ agree except that the dyad is set to one or zero. Define
+\[
+\Delta_{ij}g(y,X)=g(y^+_{ij},X)-g(y^-_{ij},X).
+\]
+\begin{itemize}
+\item A \term{change statistic} records how each modeled feature would change if one tie were toggled while all other ties are held fixed.
+\item It depends on $y_{-ij}$ and $X$, but not on the current value of $Y_{ij}$.
+\item Change statistics make local structural context explicit: the same potential tie can have different model contribution in different network neighborhoods.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Conditional-logit identity}
+\[
+\logit\Pr_{\boldsymbol\theta}(Y_{ij}=1\mid Y_{-ij}=y_{-ij},X)
+=\boldsymbol\theta^{\mathsf T}\Delta_{ij}g(y,X).
+\]
+\begin{itemize}
+\item Each coefficient is a \term{conditional log-odds contribution} for a one-unit change in its statistic.
+\item ``Conditional'' means conditional on the complete remainder of the graph and included covariates.
+\item Exponentiating $\theta_k$ gives a conditional odds multiplier only for a one-unit change in $g_k$ while the remaining change statistics are fixed.
+\item This is not a population-average tie probability and is not automatically a causal effect.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Toggle interpretation requires support}
+\begin{itemize}
+\item The conditional-logit identity applies when both $y^+_{ij}$ and $y^-_{ij}$ belong to $\mathcal{Y}$.
+\item A structural zero has no binary toggle comparison because its tie-present state is not admissible.
+\item Fixed-degree, bipartite, or other constrained supports can restrict which toggles are valid.
+\item Before interpreting a coefficient, verify that the corresponding tie comparison is defined under the network's stated support.
+\item Software options for directedness, bipartite structure, missing ties, and constraints are statistical assumptions, not merely formatting controls.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{The edges statistic: baseline sparsity}
+\begin{itemize}
+\item For a binary graph, $g_{\mathrm{edges}}(y)=\sum_{(i,j)\in D}y_{ij}$ counts present ties.
+\item Its coefficient controls baseline conditional tie propensity after all other specified effects are included.
+\item A negative edges coefficient is common in sparse networks, but its magnitude depends on the support and the rest of the model.
+\item It is not simply the observed density transformed by a logistic function once structural and covariate terms are included.
+\item Every introductory ERGM needs a clearly interpreted baseline relation term.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Reciprocity in a directed network}
+\[
+g_{\mathrm{mutual}}(y)=\sum_{i<j}y_{ij}y_{ji}.
+\]
+\begin{itemize}
+\item The statistic counts mutually tied unordered pairs in a directed graph.
+\item Its change statistic is one when toggling $i\to j$ completes a reciprocal dyad, and zero otherwise.
+\item A positive coefficient favors reciprocated dyads \emph{relative to} otherwise comparable directed graphs under the full model.
+\item Reciprocity is not defined for an undirected graph and must not be added mechanically to a one-mode undirected or bipartite specification.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Degree patterns and centralization}
+\begin{itemize}
+\item The \term{degree} of an undirected actor counts incident ties; directed graphs distinguish indegree and outdegree.
+\item A degree distribution is descriptive; it can reveal isolates, hubs, and dispersion that a simple edges-only model will not reproduce.
+\item Star statistics count configurations sharing a focal actor and can represent degree-related structure.
+\item Raw high degree is not evidence that a particular star parameter belongs in a model; the statistic must answer a substantive question and be diagnostically stable.
+\item Curved geometrically weighted degree terms are deferred to Session 1.2.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Closure and triadic structure}
+\begin{itemize}
+\item A triangle in an undirected graph is a fully connected triple; directed closure has several distinct configurations.
+\item Closure terms can represent a tendency for ties to occur in locally connected neighborhoods.
+\item Triangle counts overlap strongly: a single tie can complete several triangles, so the change statistic depends on shared partners.
+\item A positive triangle-related parameter is conditional on the other statistics; it is not proof of a social mechanism such as trust or contagion.
+\item Session 1.2 treats stable curved alternatives to naïve high-order structural terms.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Actor-level covariate effects}
+For a scalar attribute $x_i$ in a directed graph, possible statistics include
+\[
+g_{\mathrm{send}}(y,x)=\sum_{i\ne j}y_{ij}x_i,
+\qquad
+g_{\mathrm{recv}}(y,x)=\sum_{i\ne j}y_{ij}x_j.
+\]
+\begin{itemize}
+\item A \term{sender} effect asks whether actors with larger $x_i$ tend to send more ties.
+\item A \term{receiver} effect asks whether actors with larger $x_j$ tend to receive more ties.
+\item These are distinct hypotheses; a single correlation between degree and an attribute cannot distinguish them.
+\item Interpret both conditionally on structural and other covariate terms included in the model.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Homophily and mixing}
+For a categorical attribute $x_i$, an undirected matching statistic is
+\[
+g_{\mathrm{match}}(y,x)=\sum_{i<j}y_{ij}\ind(x_i=x_j).
+\]
+\begin{itemize}
+\item A positive matching coefficient favors same-category ties relative to cross-category ties after other terms are held fixed.
+\item A \term{mixing matrix} uses category-pair statistics $g_{ab}(y)=\sum_{i,j}y_{ij}\ind(x_i=a,x_j=b)$.
+\item Full mixing can reveal asymmetric or category-specific relations that a single match indicator conceals.
+\item Homophily coefficients do not automatically identify preference: opportunity, group size, unmeasured similarity, and boundary design may contribute.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{A coefficient is conditional, not causal}
+\begin{itemize}
+\item ERGM parameters describe relative probability contributions conditional on the rest of the graph, selected support, covariates, and model terms.
+\item A positive covariate or homophily effect is not by itself an intervention effect.
+\item A positive closure term is not direct evidence of a psychological preference for triangles.
+\item Causal claims require a design, temporal ordering, treatment definition, and explicit account of confounding and interference.
+\item Scientific interpretation should separate \term{model-based association} from a stronger causal explanation.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{From research question to ERGM specification}
+\begin{enumerate}
+\item Define actors, relation, time window, boundary, and support.
+\item State a graph-level question: reciprocity, mixing, closure, degree concentration, or covariate-associated ties.
+\item Select a small set of statistics justified by the question and network type.
+\item Decide which covariates are pre-relation, observed, and aligned to actors or dyads.
+\item Fit, inspect computational diagnostics, compare simulated and observed features, and revise only with a documented rationale.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Likelihood and the estimation problem}
+\begin{itemize}
+\item For observed graph $y$, the log likelihood is
+\[
+\ell(\boldsymbol\theta)=\boldsymbol\theta^{\mathsf T}g(y,X)-\log\kappa(\boldsymbol\theta,X).
+\]
+\item The score equates observed statistics with their model expectations.
+\item Direct maximum likelihood requires expectations under a distribution with an intractable normalizing constant.
+\item \term{Monte Carlo maximum likelihood estimation} approximates those expectations by simulating networks from trial parameter values.
+\item Convergence, sample-space behavior, and simulation quality are part of the statistical result, not post-processing details.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{MCMC maximum likelihood: conceptual cycle}
+\begin{enumerate}
+\item Start from a parameter value and simulate networks by admissible tie toggles or other valid moves.
+\item Estimate expected sufficient statistics under the current model.
+\item Compare simulation expectations with $g(y,X)$ and update the parameter value.
+\item Repeat until the estimating discrepancy is sufficiently small under stated convergence criteria.
+\item Retain settings, random seed policy, warnings, and diagnostics in the reproducibility record.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Maximum pseudolikelihood: useful but limited}
+\begin{itemize}
+\item \term{Maximum pseudolikelihood estimation} (MPLE) multiplies conditional tie probabilities as if they were an independent likelihood contribution.
+\item It is computationally convenient and can provide a starting value for MCMC estimation.
+\item Under dependence, MPLE standard errors and point estimates can be biased or overconfident relative to the likelihood target.
+\item A logistic-regression-looking output is not evidence that dependence has disappeared.
+\item The app labels pseudolikelihood as an approximation; reported primary results use the standard simulation-based ERGM engine when it converges.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Uncertainty and inferential discipline}
+\begin{itemize}
+\item A standard error quantifies uncertainty conditional on the fitted model, data boundary, support, and estimation procedure.
+\item A confidence interval does not repair an implausible statistic, a poor network boundary, missing data, or failed MCMC convergence.
+\item Model selection based only on coefficient significance risks specification search and selective reporting.
+\item Report estimates, uncertainty, simulation settings, diagnostics, and the scope of the population to which the observed network pertains.
+\item Avoid dichotomous conclusions such as ``proved a network mechanism.''
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Five worked public networks in the companion app}
+\small
+\begin{tabularx}{\linewidth}{@{}lXl@{}}
+\toprule
+\term{Network} & \term{Network type and introductory workflow} & \term{Static support}\\
+\midrule
+Florentine families & Business relations; edges and documented family attributes & Undirected, binary, one-mode\\
+Sampson's monastery & Interpersonal nominations; edges, reciprocity, group mixing & Directed, binary, one-mode\\
+Lazega law firm & Professional advice; edges, reciprocity, office or status covariates & Directed, binary, one-mode\\
+Southern Women & Woman--event participation; bipartite edges and mode structure & Undirected, binary, two-mode\\
+Kapferer tailor shop & Frequent sociational relations; density and documented closure comparison & Undirected, binary, one-mode\\
+\bottomrule
+\end{tabularx}
+\vspace{3pt}
+Each example is accompanied by source, data dictionary, validity warning, and reproducible computation record.
+\end{frame}
+
+\begin{frame}{Worked example: Florentine families}
+\begin{itemize}
+\item \term{Question:} are business ties associated with documented family attributes after accounting for baseline density?
+\item \term{Data object:} one static, undirected, binary family business network with actor attributes.
+\item \term{Foundational specification:} an edges term plus a pre-specified attribute term or matching statistic that is meaningful for the recorded families.
+\item \term{Computation:} compare observed statistics to the model's simulated distribution and inspect conditional coefficient estimates.
+\item \term{Limit:} the small historical network supports a focused illustration, not a general causal claim about wealth or political influence.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Worked example: Sampson's monastery}
+\begin{itemize}
+\item \term{Question:} do interpersonal nominations exhibit reciprocity and within-group mixing?
+\item \term{Data object:} a directed, binary, one-mode sociometric network among monks with recorded group affiliation.
+\item \term{Foundational specification:} edges + mutual + group matching, with terms included because each maps to a separate question.
+\item \term{Interpretation:} the mutual coefficient concerns conditional odds of reciprocated nominations, not a marginal probability of friendship.
+\item \term{Limit:} a single observation wave cannot establish the sequence by which affiliations and nominations co-developed.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Worked example: Lazega law firm}
+\begin{itemize}
+\item \term{Question:} how are professional advice ties conditionally associated with reciprocity and documented organizational attributes?
+\item \term{Data object:} a directed, binary, one-mode advice network with actor-level law-firm variables.
+\item \term{Foundational specification:} start with edges and reciprocity, then add one documented attribute hypothesis rather than all available covariates.
+\item \term{Computation:} retain the network boundary, directedness, and attribute coding in the app's analysis record.
+\item \term{Limit:} a cross-sectional model describes the observed advice-network distribution; it does not identify influence or organizational change.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Worked example: Davis Southern Women}
+\begin{itemize}
+\item \term{Question:} how does an affiliation graph differ from a one-mode social graph?
+\item \term{Data object:} women linked to social events; a static, binary, bipartite incidence network.
+\item \term{Support:} only woman--event ties are admissible; woman--woman and event--event cells are structural zeros in the original graph.
+\item \term{Computation:} inspect mode sizes and degree distributions before fitting a bipartite-appropriate baseline ERGM.
+\item \term{Limit:} a one-mode projection creates a different network and requires a separately justified analysis.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Worked example: Kapferer tailor shop}
+\begin{itemize}
+\item \term{Question:} do relatively frequent sociational relations display local closure after the baseline density is represented?
+\item \term{Data object:} a static, undirected, binary, one-mode network of 39 tailor-shop workers from the first collection period.
+\item \term{Foundational specification:} begin with an edges-only model; treat a closure extension as a documented later comparison, not an automatic term.
+\item \term{Computation:} inspect support, density, degree distribution, MCMC behavior, and simulated graph summaries before interpreting an added structural effect.
+\item \term{Limit:} the 39-worker object is a selected analytic panel and records thresholded frequent interaction, not all social contact in a probability sample of factories.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{No-code Session 1.1 computation workflow}
+\begin{enumerate}
+\item Select one of the five public networks and read its source, network-type, and scope note.
+\item Inspect actor count, admissible dyads, density, directionality, missingness, attributes, and degree distribution.
+\item Choose a small supported formula from the session's available terms; the app prevents directed-only terms in undirected data.
+\item Run the standard \texttt{statnet} ERGM computation; examine coefficient table, MCMC messages, and simulated-statistic comparison.
+\item Download a Markdown computation record containing data source, support, formula, software settings, results, warnings, and limitations.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{BYOD: required upload contract}
+\begin{itemize}
+\item \term{Edge table:} source ID and target ID for observed binary ties; a valued relation is not silently dichotomized and belongs in an explicitly justified later workflow.
+\item \term{Node table:} one unique actor ID per row and optional pre-specified actor attributes.
+\item \term{Design choices:} directed versus undirected; one-mode versus bipartite; actor boundary; structural zeros; missingness; and time window.
+\item \term{Minimum checks:} duplicate dyads, self-loops, unmatched node IDs, empty attributes, implausible density, and unsupported formula terms.
+\item \term{Principle:} upload does not make an ERGM appropriate; the research question and support must justify the model.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Common invalid or misleading uses}
+\begin{itemize}
+\item Fitting an undirected model to a directed relation after discarding direction without a substantive reason.
+\item Treating unobserved dyads as zeros or ignoring an actor boundary that omits important relational alternatives.
+\item Adding every available structural statistic or covariate merely because software accepts the formula.
+\item Interpreting a coefficient as a marginal probability, an intervention effect, or a proof of a social mechanism.
+\item Reporting a pseudolikelihood result as if it had resolved the ERGM normalizing-constant problem.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{A reporting checklist for a static ERGM}
+\begin{itemize}
+\item \term{Data:} actors, relation, observation window, boundary, directionality, mode structure, missingness, and support constraints.
+\item \term{Question:} which structural or covariate-associated graph feature is under investigation?
+\item \term{Specification:} exact sufficient statistics, covariate coding, and rationale for each term.
+\item \term{Estimation:} software, package version, algorithm, simulation controls, convergence status, and warnings.
+\item \term{Results:} conditional coefficient interpretation, uncertainty, simulated comparisons, limitations, and scope of inference.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Session 1.1 synthesis}
+\begin{itemize}
+\item A static ERGM is a probability model for a graph on an explicitly defined support.
+\item Its parameters weight \term{network statistics}; they are interpreted through conditional changes under the rest of the graph.
+\item Data definition, boundaries, structural zeros, and covariate timing are part of the statistical model.
+\item MCMC computation is required because dependence makes the normalizing constant intractable in general.
+\item Next: \term{curved ERGMs, stable structural terms, fit, and degeneracy} in Session 1.2.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{References}
+\footnotesize
+\begin{thebibliography}{99}
+\bibitem{boudourides} Boudourides, M. (2026). \emph{A Guide to Statistical Network Modeling: ERGMs, Temporal ERGMs, and SAOMs}. Seminar guide.
+\bibitem{wasserman} Wasserman, S. and Faust, K. (1994). \emph{Social Network Analysis}. Cambridge University Press.
+\bibitem{frank} Frank, O. and Strauss, D. (1986). Markov graphs. \emph{Journal of the American Statistical Association}, 81, 832--842.
+\bibitem{robins} Robins, G., Pattison, P., Kalish, Y., and Lusher, D. (2007). An introduction to exponential random graph models for social networks. \emph{Social Networks}, 29, 173--191.
+\bibitem{hunter} Hunter, D. R. and Handcock, M. S. (2006). Inference in curved exponential family models for networks. \emph{Journal of Computational and Graphical Statistics}, 15, 565--583.
+\bibitem{handcock} Handcock, M. S. and Gile, K. J. (2010). Modeling social networks from sampled data. \emph{Annals of Applied Statistics}, 4, 5--25.
+\end{thebibliography}
+\end{frame}
+
+\begin{frame}{Questions and discussion}
+\begin{center}
+\Large{Thank you!}\\[2ex]
+\normalsize{Questions?}\\[5ex]
+\href{mailto:Moses.Boudourides@northwestern.edu}{\textcolor{teal}{\small\texttt{Moses.Boudourides@northwestern.edu}}}
+\end{center}
+\end{frame}
+\includepdf[pages={8}]{last_slide.pdf}
+\end{document}

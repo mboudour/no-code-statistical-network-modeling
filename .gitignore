@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.env
+.DS_Store
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.vrb
+slides/**/preflight/
