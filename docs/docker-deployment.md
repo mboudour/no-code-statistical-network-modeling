@@ -26,8 +26,8 @@ Open <http://localhost:8501>, then select **Session 1.1 — Foundations of Stati
 
 The repository includes `render.yaml`, a Docker blueprint. In Render:
 
-1. Create a new **Blueprint** service from the GitHub repository.
-2. Select the `main` branch and accept `render.yaml`.
+1. From the Render dashboard, select **New > Blueprint**—not **New Web Service**.
+2. Connect the `mboudour/no-code-statistical-network-modeling` repository, select the `main` branch, and accept the root `render.yaml` file.
 3. Wait for the image build to complete. It installs prebuilt R/statnet binaries; no participant-facing CRAN compilation occurs.
 4. Open the assigned public service URL and verify the R engine banner reads **available**.
 
