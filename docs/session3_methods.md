@@ -23,15 +23,36 @@ The code retains actors observed in every selected wave. For public Session 3.2 
 
 For network state \(X(t)\), the network evaluation objective is a stated sum of density, compatible reciprocity/closure, and, for Session 3.2, behavior-based selection statistics. For repeated behavior \(V(t)\), the behavior objective includes shape and neighbor-similarity terms. RSiena estimates method-of-moments parameters by simulating the declared actor-oriented process.
 
-The app reports:
+The app reports all returned estimates, approximate 95% Wald intervals, period-specific rate parameters, final individual-effect convergence t-ratios, and the overall maximum convergence ratio. In an RSiena network-only fit, period rates are returned separately from the evaluation-effect vector: their estimates and standard errors are displayed, while individual returned convergence t-ratios apply to evaluation effects and the overall maximum ratio remains visible. A convergence ratio or simulation p-value is a diagnostic. Neither establishes model truth, causal selection, nor causal peer influence.
 
-- all returned estimates and standard errors;
-- approximate 95% Wald intervals in the coefficient plot;
-- final per-effect and maximum convergence ratios;
-- simulated degree and, for directed panels, in-degree plus directed-triad-census goodness-of-fit distributions; and
-- for Session 3.2, a simulated behavior-distribution goodness-of-fit audit.
+## Audit design
 
-A convergence ratio or simulation p-value is a diagnostic. Neither establishes model truth, causal selection, nor causal peer influence.
+### Session 3.1: dynamics
+
+Before fitting, the interface displays observed ties and density by wave; successive-wave Jaccard overlap; maintained, formed, and dissolved ties; and a directionality-compatible observed structural summary (mutual dyads and transitive two-path closures for directed panels, triangles for undirected panels). These are descriptive panel summaries, not separately identified formation, dissolution, or causal processes.
+
+After fitting, RSiena simulation diagnostics compare the observed panel with fitted simulations for:
+
+- degree distributions (and in-degree plus out-degree distributions for directed networks);
+- a directed triad census for directed panels;
+- mutual-dyad count and reciprocal-tie share for directed panels;
+- a fixed-bin geodesic-distance distribution;
+- a closure-sensitive shared-partner or directed-two-path distribution; and
+- isolate count, weak-component count, and largest weak-component size.
+
+Thus, an undirected workflow is never described as having a degree-only structural audit: it includes the closure-sensitive shared-partner distribution and component/isolate diagnostics.
+
+### Session 3.2: dynamics, selection, and influence
+
+The Session 3.2 page deliberately keeps three components distinct.
+
+1. **Dynamics** uses the same observed network panel and network simulation diagnostics as Session 3.1, together with a dedicated network-effect interval display.
+2. **Selection** displays observed tie-rate associations by ego score, alter score, and absolute score difference; an observed ego-by-alter tie-rate mixing heatmap; a dedicated selection-effect interval plot; and a fitted selection-only contribution surface. The surface evaluates only ego, alter, and range-normalized similarity terms while holding other model terms fixed; it is not a tie-probability or causal-response surface. A simulated tied-actor behavior mixing matrix is shown alongside its observed counterpart.
+3. **Influence** displays behavior-score distributions, means, variances, score-transition matrices, and change distributions by wave or interval. It also displays observed ego score versus average alter score and observed behavior change versus both average alter score and ego--alter discrepancy. In a directed network, an alter is an actor to whom the ego has an outgoing tie under the declared convention. The fitted average-similarity and behavior-shape contributions are displayed separately from observed associations.
+
+For joint network--behavior diagnostics, RSiena compares fitted simulations with the observed behavior distribution, behavior-change distribution, tied-actor behavior mixing matrix, range-normalized tied-actor similarity, same-score-tie proportion, and score-specific ego, alter, and absolute-difference tie-rate summaries. A simulated score cell without an eligible actor or dyad contributes a documented zero to retain a fixed auxiliary-statistic vector; cell-level values should therefore be read with the displayed observed eligibility context, not as causal estimates.
+
+RSiena’s exact similarity construction is governed by its software definition. The app’s explanatory selection surface labels its normalization explicitly from the retained displayed behavior scale; it is a visualization of fitted ego/alter/similarity contributions, not a replacement for RSiena’s exact statistic or an assertion that sample extrema define a substantive scale range.
 
 ## Public workflows
 

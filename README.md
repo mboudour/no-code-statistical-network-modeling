@@ -15,7 +15,7 @@ The **[Streamlit application hosted on Render](https://no-code-statistical-netwo
 3. **Standard R/statnet estimation and audit** — reproducible maximum-likelihood estimation through the `network` and `ergm` packages, including the full Session 1.2 MCMC, GOF, and support-specific simulation audit.
 4. **Session 2.1 temporal computation** — exactly five public repeated-network workflows, first-order lag-only TERGMs with explicitly constructed joint risk sets, transition-count audits, one-step conditional simulations, and transition-block bootstrap sensitivity checks where temporal replication permits them.
 5. **Session 2.2 separable computation** — the same five public repeated-network workflows are evaluated through distinct formation and persistence supports, component-specific rate and coefficient audits, one-step simulation envelopes, tie-spell censoring, and a whole-transition bootstrap only where temporal replication permits it.
-6. **Day 3 actor-oriented computation** — exactly five public RSiena network-only workflows for Session 3.1 and five public RSiena network--behavior coevolution workflows for Session 3.2, with explicit balanced-panel support, selection/influence boundaries, convergence diagnostics, and simulation-based goodness-of-fit plots.
+6. **Day 3 actor-oriented computation** — exactly five public RSiena network-only workflows for Session 3.1 and five public RSiena network--behavior coevolution workflows for Session 3.2, with explicit balanced-panel support; full observed dynamics turnover/Jaccard profiles; convergence diagnostics; structural, behavior, and joint network--behavior simulation audits; and clearly separated selection/influence views.
 7. **Bring Your Own Data (BYOD)** — node-table and edge-list upload validation that mirrors the worked examples and rejects unsupported valued, rank-order, multiplex, duplicate, or structurally invalid networks. Session 3.2 also requires a complete repeated numeric behavior on the retained actor panel.
 8. **Computation record** — a downloadable record of the declared support, stated formula, settings, diagnostic outputs, warnings, and interpretation boundary.
 
@@ -82,7 +82,7 @@ The fifth unit provides:
 
 - exactly five public repeated-network workflows: Knecht classroom friendship, RSiena s50 friendship, full Glasgow friendship, Coleman high-school friendship, and annual COW alliances;
 - an RSiena network-only actor-oriented model with period-specific rates, density, directed reciprocity where appropriate, and the compatible directed-triplet or undirected-triad closure effect;
-- visible observed-density, coefficient, convergence-ratio, degree, and compatible triad-census simulation-audit plots; and
+- visible tie-count/density, Jaccard, tie-turnover, reciprocity/closure, rate-parameter, coefficient, all-effect convergence, degree, triad, geodesic, shared-partner/closure, and component/isolate audit plots; and
 - support-aware BYOD validation for repeated loopless binary networks.
 
 ### Session 3.2 — SAOMs for Selection and Influence
@@ -91,7 +91,7 @@ The sixth unit provides:
 
 - exactly five documented public coevolution workflows: Knecht friendship--delinquency, Knecht friendship--alcohol, Glasgow friendship--alcohol, Glasgow friendship--cannabis, and s50 friendship--smoking;
 - an explicitly stated joint RSiena model with behavior alter, ego, and similarity selection effects; behavior linear and quadratic shape effects; and average-similarity influence;
-- visible observed-density and behavior-mean plots, coefficient and convergence plots, network degree/triad simulation audits, and behavior-distribution simulation audit; and
+- explicitly separated **Dynamics**, **Selection**, and **Influence** plots: observed network turnover/Jaccard and structural summaries; behavior distributions, transitions, changes, and alter-exposure summaries; dedicated selection/influence intervals and fitted contribution views; plus observed-versus-simulated degree/triad/geodesic/closure/component, behavior-distribution/change, tied-behavior mixing, and joint network--behavior association audits; and
 - a conservative complete-behavior support rule that is displayed for public workflows and enforced without silent imputation for BYOD uploads.
 
 > **Day 3 boundary:** The labels *selection* and *influence* locate effects in the stated joint stochastic model. They do not by themselves identify causal peer influence, remove common causes, or recover unobserved microstep ordering. See [`docs/session3_methods.md`](docs/session3_methods.md).

@@ -6,9 +6,11 @@ import json
 from io import StringIO
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from plotly.subplots import make_subplots
 from r_engine import SAOMRuntimeError, fit_saom, saom_engine_status
 from saom_core import (
     SAOMValidationError,
@@ -31,51 +33,181 @@ def _read_upload(upload: Any) -> pd.DataFrame:
     return pd.read_csv(StringIO(upload.getvalue().decode("utf-8")))
 
 
-def _profile_charts(profile: dict[str, Any]) -> None:
+def _plotly_layout(figure: go.Figure, *, title: str, y_title: str, height: int = 340) -> go.Figure:
+    """Apply a consistent, compact layout to descriptive Day 3 figures."""
+    figure.update_layout(
+        title=title,
+        template="plotly_white",
+        yaxis_title=y_title,
+        height=height,
+        margin={"l": 45, "r": 25, "t": 55, "b": 75},
+        legend={"orientation": "h", "y": -0.25},
+    )
+    return figure
+
+
+def _network_dynamics_profile(profile: dict[str, Any]) -> None:
+    """Render all observed network-dynamics plots before any estimation."""
     wave = pd.DataFrame(profile["wave_table"])
+    transitions = pd.DataFrame(profile["network_transitions"])
+    structure = pd.DataFrame(profile["network_structure"])
+    st.markdown("### Dynamics: observed network panel")
+    st.caption(
+        "These are observed descriptive summaries. Formations, dissolutions, maintenance, and Jaccard overlap describe the recorded panels; they are not separately estimated causal processes."
+    )
     st.dataframe(wave, hide_index=True, width="stretch")
-    figure = go.Figure()
+    figure = make_subplots(specs=[[{"secondary_y": True}]])
     figure.add_trace(
         go.Scatter(
-            x=wave["wave"],
-            y=wave["density"],
-            mode="lines+markers",
-            name="Observed density",
-            line={"color": PALETTE["purple"]},
-        )
+            x=wave["wave"], y=wave["ties"], mode="lines+markers", name="Observed ties", line={"color": PALETTE["purple"]}
+        ),
+        secondary_y=False,
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=wave["wave"], y=wave["density"], mode="lines+markers", name="Observed density", line={"color": PALETTE["teal"]}
+        ),
+        secondary_y=True,
     )
     figure.update_layout(
-        title="Observed density by wave",
-        xaxis_title="Wave",
-        yaxis_title="Density",
-        height=320,
-        margin={"l": 35, "r": 20, "t": 55, "b": 35},
+        title="Observed tie count and density by wave", template="plotly_white", height=340,
+        margin={"l": 45, "r": 45, "t": 55, "b": 75}, legend={"orientation": "h", "y": -0.25},
     )
+    figure.update_yaxes(title_text="Tie count", secondary_y=False)
+    figure.update_yaxes(title_text="Density", secondary_y=True)
     st.plotly_chart(figure, width="stretch")
-    if "behavior_table" in profile:
-        behavior = pd.DataFrame(profile["behavior_table"])
-        st.dataframe(behavior, hide_index=True, width="stretch")
+    if not transitions.empty:
+        left, right = st.columns(2)
+        with left:
+            turnover = go.Figure()
+            for column, label, color in (
+                ("maintained_ties", "Maintained", PALETTE["teal"]),
+                ("formed_ties", "Formed", PALETTE["purple"]),
+                ("dissolved_ties", "Dissolved", PALETTE["orange"]),
+            ):
+                turnover.add_trace(go.Bar(x=transitions["transition"], y=transitions[column], name=label, marker_color=color))
+            turnover.update_layout(barmode="group")
+            st.plotly_chart(_plotly_layout(turnover, title="Observed tie turnover by transition", y_title="Ties"), width="stretch")
+        with right:
+            overlap = go.Figure(go.Scatter(x=transitions["transition"], y=transitions["jaccard_index"], mode="lines+markers", line={"color": PALETTE["purple"]}, name="Jaccard"))
+            st.plotly_chart(_plotly_layout(overlap, title="Successive-wave Jaccard overlap", y_title="Jaccard index"), width="stretch")
+        st.dataframe(transitions, hide_index=True, width="stretch")
+    if not structure.empty:
         figure = go.Figure()
-        figure.add_trace(
-            go.Scatter(
-                x=behavior["wave"],
-                y=behavior["mean"],
-                mode="lines+markers",
-                name="Observed mean",
-                line={"color": PALETTE["teal"]},
-            )
-        )
-        figure.update_layout(
-            title=f"Observed {profile['behavior_name']} mean by wave",
-            xaxis_title="Wave",
-            yaxis_title="Mean behavior score",
-            height=320,
-            margin={"l": 35, "r": 20, "t": 55, "b": 35},
-        )
+        if profile["directed"]:
+            figure.add_trace(go.Bar(x=structure["wave"], y=structure["mutual_dyads"], name="Mutual dyads", marker_color=PALETTE["purple"]))
+            figure.add_trace(go.Bar(x=structure["wave"], y=structure["transitive_two_path_closures"], name="Transitive two-path closures", marker_color=PALETTE["teal"]))
+            figure.update_layout(barmode="group")
+            title = "Observed directed reciprocity and closure summaries"
+        else:
+            figure.add_trace(go.Bar(x=structure["wave"], y=structure["triangles"], name="Triangles", marker_color=PALETTE["teal"]))
+            title = "Observed undirected triangle (closure) count"
+        st.plotly_chart(_plotly_layout(figure, title=title, y_title="Count"), width="stretch")
+
+
+def _selection_profile(profile: dict[str, Any]) -> None:
+    """Render observed selection associations without presenting them as effects."""
+    st.markdown("### Selection: observed network–behavior associations")
+    st.caption(
+        "Every plot in this section is descriptive. It compares observed ties and behavior scores before model adjustment and does not identify a selection mechanism or a causal effect."
+    )
+    matrix = pd.DataFrame(profile["selection_matrix"])
+    if not matrix.empty:
+        pivot = matrix.pivot(index="ego_behavior", columns="alter_behavior", values="tie_rate").sort_index().sort_index(axis=1)
+        heatmap = go.Figure(go.Heatmap(z=pivot.to_numpy(), x=pivot.columns, y=pivot.index, colorscale="Viridis", colorbar={"title": "Tie rate"}, hovertemplate="ego=%{y}<br>alter=%{x}<br>tie rate=%{z:.3f}<extra></extra>"))
+        heatmap.update_layout(title="Observed tie-rate mixing matrix", template="plotly_white", xaxis_title="Alter behavior score", yaxis_title="Ego behavior score", height=390, margin={"l": 55, "r": 25, "t": 55, "b": 55})
+        st.plotly_chart(heatmap, width="stretch")
+    tabs = st.tabs(["Ego score", "Alter score", "Absolute score difference"])
+    for tab, key, label in zip(
+        tabs,
+        ("selection_ego_rates", "selection_alter_rates", "selection_difference_rates"),
+        ("Ego behavior score", "Alter behavior score", "Absolute ego–alter difference"),
+        strict=True,
+    ):
+        with tab:
+            rows = pd.DataFrame(profile[key])
+            if rows.empty:
+                st.info("No observed dyads were available for this descriptive association.")
+                continue
+            x_column = {"selection_ego_rates": "ego_behavior", "selection_alter_rates": "alter_behavior", "selection_difference_rates": "absolute_difference"}[key]
+            figure = go.Figure()
+            for wave, group in rows.groupby("wave", sort=False):
+                figure.add_trace(go.Scatter(x=group[x_column], y=group["tie_rate"], mode="lines+markers", name=str(wave)))
+            figure.update_layout(xaxis_title=label)
+            st.plotly_chart(_plotly_layout(figure, title=f"Observed tie rate by {label.lower()}", y_title="Tie rate"), width="stretch")
+
+
+def _influence_profile(profile: dict[str, Any]) -> None:
+    """Render observed behavior and alter-exposure summaries for Session 3.2."""
+    behavior = pd.DataFrame(profile["behavior_table"])
+    distribution = pd.DataFrame(profile["behavior_distribution"])
+    transitions = pd.DataFrame(profile["behavior_transitions"])
+    changes = pd.DataFrame(profile["behavior_changes"])
+    exposure = pd.DataFrame(profile["behavior_exposure"])
+    change_exposure = pd.DataFrame(profile["behavior_change_exposure"])
+    name = profile["behavior_name"]
+    st.markdown("### Influence: observed behavior and exposure patterns")
+    st.caption(
+        "The actor-level outcome may be a state, attitude, score, or behavior. These plots are descriptive; they do not make a peer-influence or causal claim. For directed networks, alters are those to whom the ego is tied under the explicitly declared outgoing-tie convention."
+    )
+    st.dataframe(behavior, hide_index=True, width="stretch")
+    left, right = st.columns(2)
+    with left:
+        figure = go.Figure()
+        for score, group in distribution.groupby("score", sort=True):
+            figure.add_trace(go.Bar(x=group["wave"], y=group["count"], name=f"Score {score}"))
+        figure.update_layout(barmode="stack")
+        st.plotly_chart(_plotly_layout(figure, title=f"Observed {name} score distribution by wave", y_title="Actors"), width="stretch")
+    with right:
+        figure = make_subplots(specs=[[{"secondary_y": True}]])
+        figure.add_trace(go.Scatter(x=behavior["wave"], y=behavior["mean"], mode="lines+markers", name="Mean", line={"color": PALETTE["teal"]}), secondary_y=False)
+        figure.add_trace(go.Scatter(x=behavior["wave"], y=behavior["variance"], mode="lines+markers", name="Variance", line={"color": PALETTE["orange"]}), secondary_y=True)
+        figure.update_layout(title=f"Observed {name} mean and variance", template="plotly_white", height=340, margin={"l": 45, "r": 45, "t": 55, "b": 75}, legend={"orientation": "h", "y": -0.25})
+        figure.update_yaxes(title_text="Mean", secondary_y=False)
+        figure.update_yaxes(title_text="Variance", secondary_y=True)
         st.plotly_chart(figure, width="stretch")
+    if not transitions.empty:
+        option = st.selectbox("Behavior-transition interval", transitions["transition"].drop_duplicates().tolist(), key="s32_behavior_transition")
+        table = transitions.loc[transitions["transition"] == option]
+        pivot = table.pivot(index="from_score", columns="to_score", values="count").fillna(0).sort_index().sort_index(axis=1)
+        figure = go.Figure(go.Heatmap(z=pivot.to_numpy(), x=pivot.columns, y=pivot.index, colorscale="Blues", colorbar={"title": "Actors"}, hovertemplate="from=%{y}<br>to=%{x}<br>actors=%{z}<extra></extra>"))
+        figure.update_layout(title=f"Observed {name} transition matrix: {option}", template="plotly_white", xaxis_title="Current score", yaxis_title="Previous score", height=390, margin={"l": 55, "r": 25, "t": 55, "b": 55})
+        st.plotly_chart(figure, width="stretch")
+    if not changes.empty:
+        figure = go.Figure()
+        for transition, group in changes.groupby("transition", sort=False):
+            figure.add_trace(go.Bar(x=group["behavior_change"], y=group["count"], name=transition))
+        figure.update_layout(barmode="group", xaxis_title="Behavior change")
+        st.plotly_chart(_plotly_layout(figure, title=f"Observed {name} change distribution", y_title="Actors"), width="stretch")
+    if not exposure.empty:
+        figure = go.Figure()
+        for wave, group in exposure.groupby("wave", sort=False):
+            figure.add_trace(go.Scatter(x=group["ego_behavior"], y=group["average_alter_behavior"], mode="markers", name=str(wave), text=group["actor"], hovertemplate="actor=%{text}<br>ego=%{x}<br>mean alters=%{y:.2f}<extra></extra>"))
+        figure.update_layout(xaxis_title="Ego behavior score")
+        st.plotly_chart(_plotly_layout(figure, title="Observed ego score versus mean alter score", y_title="Mean alter score"), width="stretch")
+    if not change_exposure.empty:
+        left, right = st.columns(2)
+        with left:
+            figure = go.Figure(go.Scatter(x=change_exposure["average_alter_behavior"], y=change_exposure["behavior_change"], mode="markers", text=change_exposure["actor"], marker={"color": PALETTE["purple"]}, hovertemplate="actor=%{text}<br>mean alters=%{x:.2f}<br>change=%{y}<extra></extra>"))
+            figure.update_layout(xaxis_title="Previous-wave mean alter score")
+            st.plotly_chart(_plotly_layout(figure, title="Observed change versus mean alter score", y_title="Behavior change"), width="stretch")
+        with right:
+            figure = go.Figure(go.Scatter(x=change_exposure["ego_alter_discrepancy"], y=change_exposure["behavior_change"], mode="markers", text=change_exposure["actor"], marker={"color": PALETTE["orange"]}, hovertemplate="actor=%{text}<br>ego − mean alters=%{x:.2f}<br>change=%{y}<extra></extra>"))
+            figure.update_layout(xaxis_title="Previous-wave ego − mean alter score")
+            st.plotly_chart(_plotly_layout(figure, title="Observed change versus ego–alter discrepancy", y_title="Behavior change"), width="stretch")
 
 
-def _coefficient_plot(rows: list[dict[str, Any]]) -> None:
+def _profile_charts(profile: dict[str, Any]) -> None:
+    """Separate observed diagnostics by the model component to be audited."""
+    _network_dynamics_profile(profile)
+    if "behavior_table" in profile:
+        _selection_profile(profile)
+        _influence_profile(profile)
+
+
+def _coefficient_plot(
+    rows: list[dict[str, Any]], *, title: str = "RSiena estimates with approximate 95% Wald intervals"
+) -> None:
     data = pd.DataFrame(rows)
     if data.empty:
         st.info("No coefficient rows were returned.")
@@ -96,13 +228,93 @@ def _coefficient_plot(rows: list[dict[str, Any]]) -> None:
     )
     figure.add_vline(x=0, line_dash="dash", line_color=PALETTE["gray"])
     figure.update_layout(
-        title="RSiena estimates with approximate 95% Wald intervals",
+        title=title,
         xaxis_title="Estimate",
         yaxis_title="Effect",
         height=max(360, 44 * len(data)),
         margin={"l": 20, "r": 20, "t": 55, "b": 35},
     )
     st.plotly_chart(figure, width="stretch")
+
+
+def _effects_with(rows: list[dict[str, Any]], fragments: tuple[str, ...]) -> list[dict[str, Any]]:
+    """Select effect rows by transparent, RSiena-returned effect-name fragments."""
+    return [
+        row
+        for row in rows
+        if any(fragment.lower() in str(row["effect"]).lower() for fragment in fragments)
+    ]
+
+
+def _rate_parameter_plot(rows: list[dict[str, Any]]) -> None:
+    """Make rate parameters visibly distinct from evaluation-function effects."""
+    rates = _effects_with(rows, ("rate (period",))
+    if not rates:
+        return
+    st.markdown("#### Period-specific rate parameters")
+    st.caption(
+        "Rate parameters govern opportunities for microsteps between observed waves. They are displayed separately from the evaluation-function effects and are not probabilities of an observed tie."
+    )
+    if all(row.get("convergence_t_ratio") is None for row in rates):
+        st.caption(
+            "For a network-only fit, RSiena returns these period rates separately from the evaluation-effect vector; the all-effect convergence chart therefore reports the individual t-ratios returned for evaluation effects together with RSiena's overall maximum ratio."
+        )
+    _coefficient_plot(rates, title="RSiena rate parameters with approximate 95% Wald intervals")
+
+
+def _selection_surface(rows: list[dict[str, Any]], profile: dict[str, Any]) -> None:
+    """Show the fitted ego/alter/similarity contribution holding other effects fixed."""
+    behavior_rows = pd.DataFrame(profile.get("behavior_distribution", []))
+    if behavior_rows.empty:
+        return
+    levels = np.sort(behavior_rows["score"].unique())
+    estimates = {str(row["effect"]).lower(): float(row["estimate"]) for row in rows}
+    ego = next((value for key, value in estimates.items() if " ego" in key and "average" not in key), None)
+    alter = next((value for key, value in estimates.items() if " alter" in key), None)
+    similarity = next((value for key, value in estimates.items() if " similarity" in key and "average" not in key), None)
+    if ego is None and alter is None and similarity is None:
+        return
+    span = float(levels.max() - levels.min())
+    grid = np.zeros((len(levels), len(levels)))
+    for i, ego_score in enumerate(levels):
+        for j, alter_score in enumerate(levels):
+            normalized_similarity = 1.0 if span == 0 else 1.0 - abs(ego_score - alter_score) / span
+            grid[i, j] = (ego or 0.0) * ego_score + (alter or 0.0) * alter_score + (similarity or 0.0) * normalized_similarity
+    figure = go.Figure(go.Heatmap(z=grid, x=levels, y=levels, colorscale="RdBu", zmid=0, colorbar={"title": "Contribution"}, hovertemplate="ego=%{y}<br>alter=%{x}<br>selection contribution=%{z:.3f}<extra></extra>"))
+    figure.update_layout(title="Fitted selection contribution surface", template="plotly_white", xaxis_title="Alter behavior score", yaxis_title="Ego behavior score", height=400, margin={"l": 55, "r": 25, "t": 55, "b": 55})
+    st.plotly_chart(figure, width="stretch")
+    st.caption(
+        "This surface evaluates only the fitted behavior ego, alter, and range-normalized similarity terms, holding structural and rate effects fixed. It is not a fitted tie probability and does not establish selection causation."
+    )
+
+
+def _influence_function_plot(rows: list[dict[str, Any]], profile: dict[str, Any]) -> None:
+    """Visualize fitted average-similarity and behavior-shape contributions separately."""
+    behavior_rows = pd.DataFrame(profile.get("behavior_distribution", []))
+    if behavior_rows.empty:
+        return
+    levels = np.sort(behavior_rows["score"].unique())
+    estimates = {str(row["effect"]).lower(): float(row["estimate"]) for row in rows}
+    average_similarity = next((value for key, value in estimates.items() if "average similarity" in key), None)
+    linear = next((value for key, value in estimates.items() if "linear shape" in key), None)
+    quadratic = next((value for key, value in estimates.items() if "quadratic shape" in key), None)
+    if average_similarity is None and linear is None and quadratic is None:
+        return
+    figure = make_subplots(rows=1, cols=2, subplot_titles=("Average-similarity contribution", "Behavior-shape contribution"))
+    if average_similarity is not None:
+        similarity = np.linspace(0, 1, 51)
+        figure.add_trace(go.Scatter(x=similarity, y=average_similarity * similarity, mode="lines", line={"color": PALETTE["purple"]}, name="Average similarity"), row=1, col=1)
+    shape = (linear or 0.0) * levels + (quadratic or 0.0) * np.square(levels)
+    figure.add_trace(go.Scatter(x=levels, y=shape, mode="lines+markers", line={"color": PALETTE["teal"]}, name="Behavior shape"), row=1, col=2)
+    figure.update_xaxes(title_text="Similarity", row=1, col=1)
+    figure.update_xaxes(title_text="Behavior score", row=1, col=2)
+    figure.update_yaxes(title_text="Evaluation contribution", row=1, col=1)
+    figure.update_yaxes(title_text="Evaluation contribution", row=1, col=2)
+    figure.update_layout(title="Fitted influence and behavior-shape contributions", template="plotly_white", height=370, margin={"l": 45, "r": 25, "t": 75, "b": 55}, legend={"orientation": "h", "y": -0.25})
+    st.plotly_chart(figure, width="stretch")
+    st.caption(
+        "The first panel evaluates the average-similarity influence term; the second evaluates the behavior linear and quadratic shape terms. Both are model contributions, not observed causal response functions."
+    )
 
 
 def _convergence_plot(result: dict[str, Any]) -> None:
@@ -134,9 +346,47 @@ def _convergence_plot(result: dict[str, Any]) -> None:
     )
 
 
-def _gof_plots(result: dict[str, Any]) -> None:
-    st.subheader("Simulation-based goodness-of-fit audits")
+def _mixing_matrix_gof(table: pd.DataFrame) -> go.Figure | None:
+    """Turn fixed RSiena mixing-cell labels into observed/simulated heatmaps."""
+    parsed = table["statistic"].str.extract(r"ego=(?P<ego>.+) \| alter=(?P<alter>.+)")
+    if parsed.isna().any().any():
+        return None
+    data = pd.concat([table.reset_index(drop=True), parsed], axis=1)
+    observed = data.pivot(index="ego", columns="alter", values="observed").sort_index().sort_index(axis=1)
+    simulated = data.pivot(index="ego", columns="alter", values="simulated_mean").reindex(index=observed.index, columns=observed.columns)
+    figure = make_subplots(rows=1, cols=2, subplot_titles=("Observed", "Fitted-simulation mean"))
+    figure.add_trace(go.Heatmap(z=observed.to_numpy(), x=observed.columns, y=observed.index, colorscale="Viridis", colorbar={"title": "Ties", "x": 0.43}, hovertemplate="ego=%{y}<br>alter=%{x}<br>ties=%{z}<extra></extra>"), row=1, col=1)
+    figure.add_trace(go.Heatmap(z=simulated.to_numpy(), x=simulated.columns, y=simulated.index, colorscale="Viridis", colorbar={"title": "Ties", "x": 1.0}, hovertemplate="ego=%{y}<br>alter=%{x}<br>mean ties=%{z:.2f}<extra></extra>"), row=1, col=2)
+    figure.update_xaxes(title_text="Alter score", row=1, col=1)
+    figure.update_xaxes(title_text="Alter score", row=1, col=2)
+    figure.update_yaxes(title_text="Ego score", row=1, col=1)
+    figure.update_yaxes(title_text="Ego score", row=1, col=2)
+    figure.update_layout(title="Tied-actor behavior mixing: observed versus fitted simulations", template="plotly_white", height=420, margin={"l": 55, "r": 55, "t": 75, "b": 55})
+    return figure
+
+
+def _gof_y_axis(label: str) -> str:
+    """Avoid implying every RSiena auxiliary statistic is a frequency count."""
+    lowered = label.lower()
+    if "selection" in lowered or "association" in lowered:
+        return "Association statistic / tie rate"
+    if "reciprocity" in lowered or "structural" in lowered or "triad" in lowered:
+        return "Structural count"
+    return "Frequency / count"
+
+
+def _gof_plots(
+    result: dict[str, Any], *, title: str, include_keywords: tuple[str, ...] | None = None
+) -> None:
+    """Render a deliberately named subset of the returned simulation diagnostics."""
+    st.subheader(title)
     audits = result.get("goodness_of_fit", [])
+    if include_keywords:
+        audits = [
+            item
+            for item in audits
+            if any(keyword in item.get("label", "").lower() for keyword in include_keywords)
+        ]
     available = [
         item for item in audits if item.get("status") == "ok" and item.get("rows")
     ]
@@ -146,6 +396,10 @@ def _gof_plots(result: dict[str, Any]) -> None:
         for tab, audit in zip(tabs, available, strict=True):
             with tab:
                 table = pd.DataFrame(audit["rows"])
+                if "mixing matrix" in audit["label"].lower():
+                    mixing = _mixing_matrix_gof(table)
+                    if mixing is not None:
+                        st.plotly_chart(mixing, width="stretch")
                 figure = go.Figure()
                 figure.add_trace(
                     go.Scatter(
@@ -179,7 +433,7 @@ def _gof_plots(result: dict[str, Any]) -> None:
                 figure.update_layout(
                     title=f"{audit['label']} — observed versus fitted simulations",
                     xaxis_title="Statistic",
-                    yaxis_title="Frequency / count",
+                    yaxis_title=_gof_y_axis(audit["label"]),
                     height=370,
                     margin={"l": 45, "r": 20, "t": 55, "b": 75},
                 )
@@ -192,15 +446,72 @@ def _gof_plots(result: dict[str, Any]) -> None:
         st.warning(f"{audit['label']}: {audit.get('reason', 'unavailable')}")
 
 
-def _result_panel(result: dict[str, Any]) -> None:
+def _result_panel(result: dict[str, Any], profile: dict[str, Any]) -> None:
     st.success(f"Completed: {result['model_class']}.")
     st.caption(result["interpretation_boundary"])
-    st.subheader("Model estimates")
+    st.subheader("All RSiena estimates")
     st.dataframe(pd.DataFrame(result["coefficients"]), hide_index=True, width="stretch")
     _coefficient_plot(result["coefficients"])
-    st.subheader("Convergence audit")
+    _rate_parameter_plot(result["coefficients"])
+    if result.get("behavior_name"):
+        st.markdown("### Dynamics: fitted network effects")
+        dynamics = _effects_with(
+            result["coefficients"],
+            ("rate (period", "outdegree", "reciprocity", "transitive"),
+        )
+        _coefficient_plot(
+            dynamics,
+            title="Network-dynamics effects with approximate 95% Wald intervals",
+        )
+        _gof_plots(
+            result,
+            title="Dynamics: network simulation audits",
+            include_keywords=("degree", "triad", "reciprocity", "geodesic"),
+        )
+        st.markdown("### Selection: fitted network–behavior effects")
+        selection = [
+            row
+            for row in result["coefficients"]
+            if any(f" {term}" in str(row["effect"]).lower() for term in ("alter", "ego", "similarity"))
+            and "average similarity" not in str(row["effect"]).lower()
+        ]
+        _coefficient_plot(
+            selection,
+            title="Selection effects with approximate 95% Wald intervals",
+        )
+        _selection_surface(result["coefficients"], profile)
+        _gof_plots(
+            result,
+            title="Selection: observed-versus-simulated mixing audit",
+            include_keywords=("mixing matrix",),
+        )
+        st.markdown("### Influence: fitted behavior effects")
+        influence = _effects_with(
+            result["coefficients"], ("linear shape", "quadratic shape", "average similarity")
+        )
+        _coefficient_plot(
+            influence,
+            title="Influence and behavior-shape effects with approximate 95% Wald intervals",
+        )
+        _influence_function_plot(result["coefficients"], profile)
+        behavior_name = str(result["behavior_name"]).lower()
+        _gof_plots(
+            result,
+            title="Influence: behavior simulation audits",
+            include_keywords=(f"{behavior_name} distribution", "change distribution"),
+        )
+        _gof_plots(
+            result,
+            title="Selection and influence: joint network–behavior association audit",
+            include_keywords=("joint network-behavior",),
+        )
+    else:
+        _gof_plots(
+            result,
+            title="Dynamics: simulation-based goodness-of-fit audits",
+        )
+    st.subheader("Convergence audit: all effects")
     _convergence_plot(result)
-    _gof_plots(result)
     if result.get("notes"):
         with st.expander("RSiena effect and diagnostic notes"):
             for note in result["notes"]:
@@ -221,7 +532,7 @@ def _result_panel(result: dict[str, Any]) -> None:
     )
 
 
-def _run_panel(panel: Any, *, key_prefix: str) -> None:
+def _run_panel(panel: Any, *, profile: dict[str, Any], key_prefix: str) -> None:
     st.markdown("#### Reproducible pilot settings")
     st.caption(
         "The engine is RSiena in the Render Docker image. These settings control a classroom pilot; a publication analysis requires a documented convergence assessment and, where appropriate, larger simulation settings."
@@ -274,7 +585,7 @@ def _run_panel(panel: Any, *, key_prefix: str) -> None:
                 return
         st.session_state[f"{key_prefix}_result"] = result
     if f"{key_prefix}_result" in st.session_state:
-        _result_panel(st.session_state[f"{key_prefix}_result"])
+        _result_panel(st.session_state[f"{key_prefix}_result"], profile)
 
 
 def _public_workflows(session: str) -> None:
@@ -299,7 +610,7 @@ def _public_workflows(session: str) -> None:
             f"**Behavior-completeness support rule applied:** {profile['excluded_for_incomplete_behavior']} actor(s) observed in the network panel were excluded because the selected behavior was not observed at every selected wave. They were not recoded as a zero behavior or a non-tie."
         )
     _profile_charts(profile)
-    _run_panel(panel, key_prefix=f"public_{entry['id']}")
+    _run_panel(panel, profile=profile, key_prefix=f"public_{entry['id']}")
 
 
 def _byod(session: str) -> None:
@@ -362,8 +673,9 @@ def _byod(session: str) -> None:
         st.error(str(error))
         return
     st.success("The upload satisfies the explicit Day 3 balanced-panel contract.")
-    _profile_charts(panel_profile(panel))
-    _run_panel(panel, key_prefix=f"byod_{session}")
+    profile = panel_profile(panel)
+    _profile_charts(profile)
+    _run_panel(panel, profile=profile, key_prefix=f"byod_{session}")
 
 
 def render_day3(session: str) -> None:

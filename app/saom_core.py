@@ -316,12 +316,240 @@ def load_byod_panel(
     return _balanced_panel(spec, nodes, edges, behavior, behavior_name, None, False)
 
 
+def _adjacency_for_wave(panel: SAOMPanel, wave: str) -> np.ndarray:
+    """Build one observed adjacency matrix without inventing unavailable dyads."""
+    index = {actor: position for position, actor in enumerate(panel.actors)}
+    adjacency = np.zeros((len(panel.actors), len(panel.actors)), dtype=int)
+    observed = panel.edges.loc[panel.edges["wave"] == wave]
+    for source, target in observed[["source", "target"]].itertuples(
+        index=False, name=None
+    ):
+        i, j = index[str(source)], index[str(target)]
+        adjacency[i, j] = 1
+        if not panel.spec.directed:
+            adjacency[j, i] = 1
+    return adjacency
+
+
+def _network_transition_rows(
+    panel: SAOMPanel, edge_sets: dict[str, set[tuple[str, str]]]
+) -> list[dict[str, Any]]:
+    """Count documented tie turnover and overlap between adjacent observed waves."""
+    rows: list[dict[str, Any]] = []
+    for previous, current in zip(panel.waves[:-1], panel.waves[1:], strict=True):
+        prior, later = edge_sets[previous], edge_sets[current]
+        maintained = prior & later
+        union = prior | later
+        rows.append(
+            {
+                "from_wave": previous,
+                "to_wave": current,
+                "transition": f"{previous} → {current}",
+                "maintained_ties": len(maintained),
+                "formed_ties": len(later - prior),
+                "dissolved_ties": len(prior - later),
+                "jaccard_index": len(maintained) / len(union) if union else np.nan,
+            }
+        )
+    return rows
+
+
+def _network_structure_rows(panel: SAOMPanel) -> list[dict[str, Any]]:
+    """Report observed reciprocity and closure summaries with explicit directionality."""
+    rows: list[dict[str, Any]] = []
+    for wave in panel.waves:
+        adjacency = _adjacency_for_wave(panel, wave)
+        if panel.spec.directed:
+            rows.append(
+                {
+                    "wave": wave,
+                    "mutual_dyads": int((adjacency * adjacency.T).sum() / 2),
+                    "transitive_two_path_closures": int(
+                        ((adjacency @ adjacency) * adjacency).sum()
+                    ),
+                    "structure": "Directed reciprocity and transitive two-path closures",
+                }
+            )
+        else:
+            rows.append(
+                {
+                    "wave": wave,
+                    "triangles": int(np.trace(adjacency @ adjacency @ adjacency) / 6),
+                    "structure": "Undirected triangles",
+                }
+            )
+    return rows
+
+
+def _behavior_detail_rows(panel: SAOMPanel) -> dict[str, list[dict[str, Any]]]:
+    """Prepare observed behavior, selection, and influence summaries for the app."""
+    if panel.behavior is None or panel.behavior_name is None:
+        return {}
+    behavior_name = panel.behavior_name
+    behavior_values = {
+        wave: panel.behavior.loc[
+            panel.behavior["wave"] == wave, ["id", behavior_name]
+        ].set_index("id")[behavior_name]
+        for wave in panel.waves
+    }
+    distribution_rows: list[dict[str, Any]] = []
+    exposure_rows: list[dict[str, Any]] = []
+    selection_records: list[dict[str, Any]] = []
+    edge_sets = {
+        wave: set(
+            panel.edges.loc[panel.edges["wave"] == wave, ["source", "target"]]
+            .astype(str)
+            .itertuples(index=False, name=None)
+        )
+        for wave in panel.waves
+    }
+    for wave in panel.waves:
+        values = behavior_values[wave]
+        counts = values.value_counts().sort_index()
+        for score, count in counts.items():
+            distribution_rows.append(
+                {
+                    "wave": wave,
+                    "score": float(score),
+                    "count": int(count),
+                    "proportion": float(count / len(values)),
+                }
+            )
+        neighbors: dict[str, list[str]] = {actor: [] for actor in panel.actors}
+        for source, target in edge_sets[wave]:
+            neighbors[source].append(target)
+            if not panel.spec.directed:
+                neighbors[target].append(source)
+        for actor in panel.actors:
+            alters = neighbors[actor]
+            if alters:
+                exposure_rows.append(
+                    {
+                        "wave": wave,
+                        "actor": actor,
+                        "ego_behavior": float(values.loc[actor]),
+                        "average_alter_behavior": float(values.loc[alters].mean()),
+                        "alter_count": len(alters),
+                    }
+                )
+        candidates = [
+            (source, target)
+            for source in panel.actors
+            for target in panel.actors
+            if source != target and (panel.spec.directed or source < target)
+        ]
+        for source, target in candidates:
+            tied = (source, target) in edge_sets[wave]
+            selection_records.append(
+                {
+                    "wave": wave,
+                    "ego_behavior": float(values.loc[source]),
+                    "alter_behavior": float(values.loc[target]),
+                    "absolute_difference": float(
+                        abs(values.loc[source] - values.loc[target])
+                    ),
+                    "tie": int(tied),
+                }
+            )
+    behavior_transition_rows: list[dict[str, Any]] = []
+    behavior_change_rows: list[dict[str, Any]] = []
+    influence_change_rows: list[dict[str, Any]] = []
+    exposure = pd.DataFrame(exposure_rows)
+    for previous, current in zip(panel.waves[:-1], panel.waves[1:], strict=True):
+        prior = behavior_values[previous].rename("previous")
+        later = behavior_values[current].rename("current")
+        joined = pd.concat([prior, later], axis=1).dropna()
+        joined["change"] = joined["current"] - joined["previous"]
+        transition = joined.groupby(["previous", "current"], sort=True).size()
+        for (before, after), count in transition.items():
+            behavior_transition_rows.append(
+                {
+                    "from_wave": previous,
+                    "to_wave": current,
+                    "transition": f"{previous} → {current}",
+                    "from_score": float(before),
+                    "to_score": float(after),
+                    "count": int(count),
+                }
+            )
+        changes = joined["change"].value_counts().sort_index()
+        for change, count in changes.items():
+            behavior_change_rows.append(
+                {
+                    "from_wave": previous,
+                    "to_wave": current,
+                    "transition": f"{previous} → {current}",
+                    "behavior_change": float(change),
+                    "count": int(count),
+                }
+            )
+        prior_exposure = exposure.loc[exposure["wave"] == previous].set_index("actor")
+        for actor, row in joined.iterrows():
+            if actor in prior_exposure.index:
+                mean_alter = float(prior_exposure.loc[actor, "average_alter_behavior"])
+                influence_change_rows.append(
+                    {
+                        "from_wave": previous,
+                        "to_wave": current,
+                        "transition": f"{previous} → {current}",
+                        "actor": actor,
+                        "ego_behavior": float(row["previous"]),
+                        "average_alter_behavior": mean_alter,
+                        "behavior_change": float(row["change"]),
+                        "ego_alter_discrepancy": float(row["previous"] - mean_alter),
+                    }
+                )
+    selections = pd.DataFrame(selection_records)
+    selection_ego = (
+        selections.groupby(["wave", "ego_behavior"], as_index=False)["tie"]
+        .agg(["sum", "count", "mean"])
+        .reset_index()
+        .rename(columns={"sum": "ties", "count": "eligible_dyads", "mean": "tie_rate"})
+    )
+    selection_alter = (
+        selections.groupby(["wave", "alter_behavior"], as_index=False)["tie"]
+        .agg(["sum", "count", "mean"])
+        .reset_index()
+        .rename(columns={"sum": "ties", "count": "eligible_dyads", "mean": "tie_rate"})
+    )
+    selection_difference = (
+        selections.groupby(["wave", "absolute_difference"], as_index=False)["tie"]
+        .agg(["sum", "count", "mean"])
+        .reset_index()
+        .rename(columns={"sum": "ties", "count": "eligible_dyads", "mean": "tie_rate"})
+    )
+    selection_matrix = (
+        selections.groupby(["ego_behavior", "alter_behavior"], as_index=False)["tie"]
+        .agg(["sum", "count", "mean"])
+        .reset_index()
+        .rename(columns={"sum": "ties", "count": "eligible_dyads", "mean": "tie_rate"})
+    )
+    return {
+        "behavior_distribution": distribution_rows,
+        "behavior_transitions": behavior_transition_rows,
+        "behavior_changes": behavior_change_rows,
+        "behavior_exposure": exposure_rows,
+        "behavior_change_exposure": influence_change_rows,
+        "selection_ego_rates": selection_ego.to_dict(orient="records"),
+        "selection_alter_rates": selection_alter.to_dict(orient="records"),
+        "selection_difference_rates": selection_difference.to_dict(orient="records"),
+        "selection_matrix": selection_matrix.to_dict(orient="records"),
+    }
+
+
 def panel_profile(panel: SAOMPanel) -> dict[str, Any]:
-    """Return observed network and behavior summaries before a model is fitted."""
+    """Return observed network, selection, and influence summaries before fitting."""
     actor_index = {actor: position for position, actor in enumerate(panel.actors)}
+    edge_sets = {
+        wave: set(
+            panel.edges.loc[panel.edges["wave"] == wave, ["source", "target"]]
+            .astype(str)
+            .itertuples(index=False, name=None)
+        )
+        for wave in panel.waves
+    }
     wave_rows: list[dict[str, Any]] = []
     for wave in panel.waves:
-        observed = panel.edges.loc[panel.edges["wave"] == wave]
         max_dyads = len(panel.actors) * (len(panel.actors) - 1)
         if not panel.spec.directed:
             max_dyads //= 2
@@ -329,8 +557,8 @@ def panel_profile(panel: SAOMPanel) -> dict[str, Any]:
             {
                 "wave": wave,
                 "actors": len(panel.actors),
-                "ties": len(observed),
-                "density": len(observed) / max_dyads if max_dyads else np.nan,
+                "ties": len(edge_sets[wave]),
+                "density": len(edge_sets[wave]) / max_dyads if max_dyads else np.nan,
             }
         )
     result: dict[str, Any] = {
@@ -338,6 +566,8 @@ def panel_profile(panel: SAOMPanel) -> dict[str, Any]:
         "waves": len(panel.waves),
         "directed": panel.spec.directed,
         "wave_table": wave_rows,
+        "network_transitions": _network_transition_rows(panel, edge_sets),
+        "network_structure": _network_structure_rows(panel),
         "balanced_actor_rule": "All retained actors are observed at every selected wave.",
         "excluded_for_incomplete_behavior": panel.excluded_for_incomplete_behavior,
         "actor_index": actor_index,
@@ -352,6 +582,7 @@ def panel_profile(panel: SAOMPanel) -> dict[str, Any]:
                 {
                     "wave": wave,
                     "mean": float(values.mean()),
+                    "variance": float(values.var(ddof=0)),
                     "standard_deviation": float(values.std(ddof=0)),
                     "minimum": float(values.min()),
                     "maximum": float(values.max()),
@@ -360,6 +591,7 @@ def panel_profile(panel: SAOMPanel) -> dict[str, Any]:
             )
         result["behavior_name"] = panel.behavior_name
         result["behavior_table"] = behavior_rows
+        result.update(_behavior_detail_rows(panel))
     return result
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
-# Fit an explicitly specified actor-oriented network model with RSiena and return
-# JSON-safe estimates plus simulation-based goodness-of-fit summaries. The script
-# never installs packages and runs only in the pre-provisioned Docker image.
+# Fit explicitly specified actor-oriented models and return source-transparent,
+# simulation-based diagnostics. This script never installs packages and is run only
+# in the pre-provisioned Docker image.
 
 suppressPackageStartupMessages({
   library(RSiena)
@@ -17,9 +17,7 @@ write_result <- function(value) {
   jsonlite::write_json(value, output_path, auto_unbox = TRUE, pretty = TRUE, na = "null", null = "null")
 }
 
-as_message <- function(error) {
-  conditionMessage(error)
-}
+as_message <- function(error) conditionMessage(error)
 
 safe_include <- function(effects, ..., notes) {
   result <- tryCatch(includeEffects(effects, ..., verbose = FALSE), error = identity)
@@ -44,17 +42,12 @@ serialize_gof <- function(gof, label) {
     list(
       statistic = as.character(keys[[index]]),
       observed = observations[[index]],
-      simulated_mean = mean(draws),
-      simulated_lower_025 = as.numeric(stats::quantile(draws, 0.025, names = FALSE)),
-      simulated_upper_975 = as.numeric(stats::quantile(draws, 0.975, names = FALSE))
+      simulated_mean = mean(draws, na.rm = TRUE),
+      simulated_lower_025 = as.numeric(stats::quantile(draws, 0.025, names = FALSE, na.rm = TRUE)),
+      simulated_upper_975 = as.numeric(stats::quantile(draws, 0.975, names = FALSE, na.rm = TRUE))
     )
   })
-  list(
-    label = label,
-    status = "ok",
-    joint_p_value = joint$p,
-    rows = rows
-  )
+  list(label = label, status = "ok", joint_p_value = joint$p, rows = rows)
 }
 
 safe_gof <- function(fit, function_value, variable_name, label, iterations, notes) {
@@ -67,6 +60,161 @@ safe_gof <- function(fit, function_value, variable_name, label, iterations, note
     return(list(result = list(label = label, status = "unavailable", reason = as_message(result), rows = list()), notes = notes))
   }
   list(result = serialize_gof(result, label), notes = notes)
+}
+
+# Custom sienaGOF functions receive either the observed end state (i = NULL) or
+# the fitted simulation at the end of an observed period. They all use fixed-size
+# vectors so that RSiena can compare observed and simulated statistics fairly.
+network_matrix <- function(i, obsData, sims, period, groupName, varName) {
+  as.matrix(RSiena:::sparseMatrixExtraction(i, obsData, sims, period, groupName, varName))
+}
+
+behavior_vector <- function(i, obsData, sims, period, groupName, varName) {
+  as.numeric(RSiena:::behaviorExtraction(i, obsData, sims, period, groupName, varName))
+}
+
+previous_behavior_vector <- function(obsData, period, groupName, varName) {
+  as.numeric(obsData[[groupName]]$depvars[[varName]][, , period])
+}
+
+behavior_levels <- function(obsData, groupName, varName) {
+  bounds <- attr(obsData[[groupName]]$depvars[[varName]], "behRange")
+  seq.int(as.integer(bounds[[1]]), as.integer(bounds[[2]]))
+}
+
+geodesic_distribution <- function(adjacency, max_distance = 6L) {
+  n <- nrow(adjacency)
+  counts <- stats::setNames(rep(0, max_distance + 1L), c(as.character(seq_len(max_distance)), paste0(">=", max_distance + 1L, " or unreachable")))
+  for (source in seq_len(n)) {
+    seen <- rep(FALSE, n)
+    seen[[source]] <- TRUE
+    frontier <- source
+    for (distance in seq_len(max_distance)) {
+      if (!length(frontier)) break
+      candidates <- which(colSums(adjacency[frontier, , drop = FALSE]) > 0)
+      new_nodes <- candidates[!seen[candidates]]
+      if (length(new_nodes)) {
+        counts[[as.character(distance)]] <- counts[[as.character(distance)]] + length(new_nodes)
+        seen[new_nodes] <- TRUE
+      }
+      frontier <- new_nodes
+    }
+    counts[[max_distance + 1L]] <- counts[[max_distance + 1L]] + sum(!seen)
+  }
+  counts
+}
+
+weak_component_summary <- function(adjacency) {
+  adjacency <- (adjacency + t(adjacency)) > 0
+  n <- nrow(adjacency)
+  seen <- rep(FALSE, n)
+  sizes <- integer(0)
+  for (source in seq_len(n)) {
+    if (seen[[source]]) next
+    component <- source
+    seen[[source]] <- TRUE
+    frontier <- source
+    while (length(frontier)) {
+      candidates <- which(colSums(adjacency[frontier, , drop = FALSE]) > 0)
+      new_nodes <- candidates[!seen[candidates]]
+      seen[new_nodes] <- TRUE
+      component <- c(component, new_nodes)
+      frontier <- new_nodes
+    }
+    sizes <- c(sizes, length(component))
+  }
+  c(
+    isolates = sum(rowSums(adjacency) == 0),
+    weak_components = length(sizes),
+    largest_weak_component = max(sizes)
+  )
+}
+
+NetworkStructuralAudit <- function(i, obsData, sims, period, groupName, varName) {
+  adjacency <- network_matrix(i, obsData, sims, period, groupName, varName)
+  geodesics <- geodesic_distribution(adjacency)
+  shared <- adjacency %*% adjacency
+  max_bin <- 3L
+  per_dyad <- shared[row(adjacency) != col(adjacency)]
+  shared_bins <- stats::setNames(
+    c(vapply(0:max_bin, function(level) sum(per_dyad == level), numeric(1)), sum(per_dyad > max_bin)),
+    c(paste0("closure/shared partners=", 0:max_bin), paste0("closure/shared partners>=", max_bin + 1L))
+  )
+  components <- weak_component_summary(adjacency)
+  c(geodesics, shared_bins, components)
+}
+
+DirectedReciprocityAudit <- function(i, obsData, sims, period, groupName, varName) {
+  adjacency <- network_matrix(i, obsData, sims, period, groupName, varName)
+  mutual_dyads <- sum(adjacency * t(adjacency)) / 2
+  c(
+    mutual_dyads = mutual_dyads,
+    reciprocal_tie_share = if (sum(adjacency) > 0) 2 * mutual_dyads / sum(adjacency) else 0
+  )
+}
+
+TiedBehaviorMixingAudit <- function(i, obsData, sims, period, groupName, varName) {
+  behavior <- behavior_vector(i, obsData, sims, period, groupName, "behavior")
+  adjacency <- network_matrix(i, obsData, sims, period, groupName, "friendship")
+  levels <- behavior_levels(obsData, groupName, "behavior")
+  rows <- which(adjacency > 0, arr.ind = TRUE)
+  mixing <- matrix(0, nrow = length(levels), ncol = length(levels), dimnames = list(levels, levels))
+  if (nrow(rows)) {
+    for (index in seq_len(nrow(rows))) {
+      ego <- as.character(behavior[[rows[index, 1]]])
+      alter <- as.character(behavior[[rows[index, 2]]])
+      if (ego %in% rownames(mixing) && alter %in% colnames(mixing)) mixing[ego, alter] <- mixing[ego, alter] + 1
+    }
+  }
+  output <- as.vector(mixing)
+  names(output) <- as.vector(outer(rownames(mixing), colnames(mixing), function(ego, alter) paste0("ego=", ego, " | alter=", alter)))
+  output
+}
+
+SelectionAssociationAudit <- function(i, obsData, sims, period, groupName, varName) {
+  behavior <- behavior_vector(i, obsData, sims, period, groupName, "behavior")
+  adjacency <- network_matrix(i, obsData, sims, period, groupName, "friendship")
+  levels <- behavior_levels(obsData, groupName, "behavior")
+  span <- max(levels) - min(levels)
+  rows <- which(adjacency > 0, arr.ind = TRUE)
+  similarity <- if (nrow(rows) && span > 0) mean(1 - abs(behavior[rows[, 1]] - behavior[rows[, 2]]) / span) else 0
+  same_score <- if (nrow(rows)) mean(behavior[rows[, 1]] == behavior[rows[, 2]]) else 0
+  ego_rates <- vapply(levels, function(value) {
+    eligible <- which(behavior == value)
+    if (!length(eligible)) return(0)
+    sum(adjacency[eligible, , drop = FALSE]) / (length(eligible) * (nrow(adjacency) - 1))
+  }, numeric(1))
+  alter_rates <- vapply(levels, function(value) {
+    eligible <- which(behavior == value)
+    if (!length(eligible)) return(0)
+    sum(adjacency[, eligible, drop = FALSE]) / (length(eligible) * (nrow(adjacency) - 1))
+  }, numeric(1))
+  differences <- 0:span
+  difference_rates <- vapply(differences, function(difference) {
+    mask <- outer(behavior, behavior, function(ego, alter) abs(ego - alter) == difference)
+    diag(mask) <- FALSE
+    if (!sum(mask)) return(0)
+    sum(adjacency[mask]) / sum(mask)
+  }, numeric(1))
+  c(
+    `joint tied-actor similarity` = similarity,
+    `homophily same-score tie proportion` = same_score,
+    stats::setNames(ego_rates, paste0("tie rate | ego=", levels)),
+    stats::setNames(alter_rates, paste0("tie rate | alter=", levels)),
+    stats::setNames(difference_rates, paste0("tie rate | absolute difference=", differences))
+  )
+}
+
+BehaviorDynamicsAudit <- function(i, obsData, sims, period, groupName, varName) {
+  current <- behavior_vector(i, obsData, sims, period, groupName, "behavior")
+  previous <- previous_behavior_vector(obsData, period, groupName, "behavior")
+  levels <- behavior_levels(obsData, groupName, "behavior")
+  span <- max(levels) - min(levels)
+  changes <- current - previous
+  change_levels <- seq.int(-span, span)
+  distribution <- vapply(change_levels, function(value) sum(changes == value, na.rm = TRUE), numeric(1))
+  names(distribution) <- paste0("behavior change=", change_levels)
+  distribution
 }
 
 run_fit <- function(payload) {
@@ -147,13 +295,24 @@ run_fit <- function(payload) {
   if (length(effect_names) != length(fit$theta)) effect_names <- paste0("effect_", seq_along(fit$theta))
   if (!is.null(behavior_name) && nzchar(behavior_name)) effect_names <- gsub("behavior", behavior_name, effect_names, fixed = TRUE)
   coefficients <- lapply(seq_along(fit$theta), function(index) {
-    list(
-      effect = effect_names[[index]],
-      estimate = fit$theta[[index]],
-      standard_error = fit$se[[index]],
-      convergence_t_ratio = fit$tstat[[index]]
-    )
+    list(effect = effect_names[[index]], estimate = fit$theta[[index]], standard_error = fit$se[[index]], convergence_t_ratio = fit$tstat[[index]])
   })
+  # For a network-only fit, RSiena stores period-specific opportunity rates in
+  # `rate`/`vrate` rather than in the evaluation-effect theta vector. Preserve
+  # them in the app output so the coefficient view never conceals rates.
+  if ((is.null(behavior_name) || !nzchar(behavior_name)) && length(fit$rate)) {
+    rate_se <- sqrt(pmax(as.numeric(fit$vrate), 0))
+    network_rates <- lapply(seq_along(fit$rate), function(index) {
+      list(
+        effect = paste0("constant friendship rate (period ", index, ")"),
+        estimate = as.numeric(fit$rate[[index]]),
+        standard_error = rate_se[[index]],
+        convergence_t_ratio = NA_real_
+      )
+    })
+    coefficients <- c(network_rates, coefficients)
+    notes[[length(notes) + 1L]] <- "RSiena returns network-only period rates separately from evaluation effects; their estimates and standard errors are shown, while the returned individual convergence t-ratios apply to the evaluation-effect vector."
+  }
   gof_iterations <- max(20L, min(as.integer(payload$gof_simulations), 200L))
   audits <- list()
   output <- safe_gof(fit, OutdegreeDistribution, "friendship", if (directed) "Out-degree distribution" else "Degree distribution", gof_iterations, notes)
@@ -163,19 +322,26 @@ run_fit <- function(payload) {
     audits[[length(audits) + 1L]] <- output$result; notes <- output$notes
     output <- safe_gof(fit, TriadCensus, "friendship", "Directed triad census", gof_iterations, notes)
     audits[[length(audits) + 1L]] <- output$result; notes <- output$notes
+    output <- safe_gof(fit, DirectedReciprocityAudit, "friendship", "Reciprocity count", gof_iterations, notes)
+    audits[[length(audits) + 1L]] <- output$result; notes <- output$notes
   }
+  output <- safe_gof(fit, NetworkStructuralAudit, "friendship", if (directed) "Geodesic, closure, and component structural audit" else "Geodesic, shared-partner closure, and component structural audit", gof_iterations, notes)
+  audits[[length(audits) + 1L]] <- output$result; notes <- output$notes
   if (!is.null(behavior_name) && nzchar(behavior_name)) {
     output <- safe_gof(fit, BehaviorDistribution, "behavior", paste0(behavior_name, " distribution"), gof_iterations, notes)
+    audits[[length(audits) + 1L]] <- output$result; notes <- output$notes
+    output <- safe_gof(fit, BehaviorDynamicsAudit, "behavior", paste0(behavior_name, " change distribution"), gof_iterations, notes)
+    audits[[length(audits) + 1L]] <- output$result; notes <- output$notes
+    output <- safe_gof(fit, TiedBehaviorMixingAudit, "friendship", "Observed-versus-simulated tied-actor behavior mixing matrix", gof_iterations, notes)
+    audits[[length(audits) + 1L]] <- output$result; notes <- output$notes
+    output <- safe_gof(fit, SelectionAssociationAudit, "friendship", "Joint network-behavior association and selection audit", gof_iterations, notes)
     audits[[length(audits) + 1L]] <- output$result; notes <- output$notes
   }
   list(
     status = "ok",
     model_class = if (is.null(behavior_name) || !nzchar(behavior_name)) "RSiena network-only SAOM" else "RSiena joint network–behavior coevolution SAOM",
     data_label = payload$label,
-    actors = length(actors),
-    waves = length(waves),
-    directed = directed,
-    behavior_name = behavior_name,
+    actors = length(actors), waves = length(waves), directed = directed, behavior_name = behavior_name,
     settings = list(n3 = algorithm$n3, gof_simulations = gof_iterations, seed = payload$seed),
     coefficients = coefficients,
     convergence = list(

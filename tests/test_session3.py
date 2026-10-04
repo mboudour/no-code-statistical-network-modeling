@@ -35,6 +35,14 @@ def test_every_public_workflow_builds_a_valid_json_payload() -> None:
             assert selected["id"] == item["id"]
             assert profile["actors"] >= 5
             assert profile["waves"] >= 2
+            assert len(profile["network_transitions"]) == profile["waves"] - 1
+            assert len(profile["network_structure"]) == profile["waves"]
+            assert {
+                "maintained_ties",
+                "formed_ties",
+                "dissolved_ties",
+                "jaccard_index",
+            }.issubset(profile["network_transitions"][0])
             assert len(payload["edges"]) == len(panel.edges)
             assert payload["directed"] == panel.spec.directed
             if session == "3.1":
@@ -43,6 +51,18 @@ def test_every_public_workflow_builds_a_valid_json_payload() -> None:
             else:
                 assert payload["behavior_name"] == item["behavior"]
                 assert len(payload["behavior"]) == profile["actors"] * profile["waves"]
+                for key in [
+                    "behavior_distribution",
+                    "behavior_transitions",
+                    "behavior_changes",
+                    "behavior_exposure",
+                    "behavior_change_exposure",
+                    "selection_ego_rates",
+                    "selection_alter_rates",
+                    "selection_difference_rates",
+                    "selection_matrix",
+                ]:
+                    assert key in profile
 
 
 def test_public_coevolution_workflows_report_behavior_support_restrictions() -> None:
@@ -94,10 +114,19 @@ def test_day3_pages_expose_the_full_audit_contract() -> None:
         "Friday, October 30, 2026 · 3:00–4:30 PM GMT",
         "Friday, October 30, 2026 · 4:30–6:00 PM GMT",
         "Five worked public workflows",
-        "Observed density by wave",
+        "Dynamics: observed network panel",
+        "Successive-wave Jaccard overlap",
+        "Observed tie turnover by transition",
+        "Selection: observed network–behavior associations",
+        "Observed tie-rate mixing matrix",
+        "Fitted selection contribution surface",
+        "Influence: observed behavior and exposure patterns",
+        "Observed change versus mean alter score",
+        "Period-specific rate parameters",
+        "Dynamics: network simulation audits",
+        "Selection and influence: joint network–behavior association audit",
         "approximate 95% Wald intervals",
         "Final convergence t-ratios",
-        "Simulation-based goodness-of-fit audits",
         "Behavior-completeness support rule applied",
         "Download the reproducible computation record",
     ]:
@@ -108,6 +137,13 @@ def test_day3_pages_expose_the_full_audit_contract() -> None:
         "IndegreeDistribution",
         "TriadCensus",
         "BehaviorDistribution",
+        "NetworkStructuralAudit",
+        "DirectedReciprocityAudit",
+        "TiedBehaviorMixingAudit",
+        "SelectionAssociationAudit",
+        "BehaviorDynamicsAudit",
+        "Geodesic, closure, and component structural audit",
+        "Observed-versus-simulated tied-actor behavior mixing matrix",
         "transTriads",
         "avSim",
     ]:
