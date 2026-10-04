@@ -1,6 +1,6 @@
 # No-Code Statistical Network Modeling
 
-Public computation and Beamer-material repository for the **instats seminar, A Guide to Statistical Network Modeling** by **Moses Boudourides**.
+Public computation repository for the **instats seminar, A Guide to Statistical Network Modeling** by **Moses Boudourides**.
 
 [![Streamlit App](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit&logoColor=white)](https://no-code-statistical-network-modeling.onrender.com/) [Open the Streamlit App](https://no-code-statistical-network-modeling.onrender.com/)
 
@@ -8,14 +8,15 @@ Public computation and Beamer-material repository for the **instats seminar, A G
 
 ## Interactive Companion App
 
-The **[Streamlit application hosted on Render](https://no-code-statistical-network-modeling.onrender.com/)** is the public no-code companion for the seminar. It provides implemented Day 1 workflows for Sessions 1.1 and 1.2, and the Session 2.1 temporal-network workflow:
+The **[Streamlit application hosted on Render](https://no-code-statistical-network-modeling.onrender.com/)** is the public no-code companion for the seminar. It provides implemented Day 1 workflows for Sessions 1.1 and 1.2, plus Day 2 workflows for Sessions 2.1 and 2.2:
 
 1. **Five worked public networks per session** — documented static-network examples selected only where that session's stated method is valid for the declared support and data structure.
 2. **Guided model specification** — Session 1.1 provides foundational terms; Session 1.2 adds support-checked geometrically weighted terms, fixed-decay stability models, and bounded single-decay sensitivity fits.
 3. **Standard R/statnet estimation and audit** — reproducible maximum-likelihood estimation through the `network` and `ergm` packages, including the full Session 1.2 MCMC, GOF, and support-specific simulation audit.
 4. **Session 2.1 temporal computation** — exactly five public repeated-network workflows, first-order lag-only TERGMs with explicitly constructed joint risk sets, transition-count audits, one-step conditional simulations, and transition-block bootstrap sensitivity checks where temporal replication permits them.
-5. **Bring Your Own Data (BYOD)** — node-table and edge-list upload validation that mirrors the worked examples and rejects unsupported valued, rank-order, multiplex, duplicate, or structurally invalid networks.
-6. **Computation record** — a downloadable record of the declared support, stated formula, settings, diagnostic outputs, warnings, and interpretation boundary.
+5. **Session 2.2 separable computation** — the same five public repeated-network workflows are evaluated through distinct formation and persistence supports, component-specific rate and coefficient audits, one-step simulation envelopes, tie-spell censoring, and a whole-transition bootstrap only where temporal replication permits it.
+6. **Bring Your Own Data (BYOD)** — node-table and edge-list upload validation that mirrors the worked examples and rejects unsupported valued, rank-order, multiplex, duplicate, or structurally invalid networks.
+7. **Computation record** — a downloadable record of the declared support, stated formula, settings, diagnostic outputs, warnings, and interpretation boundary.
 
 The public companion will expand session by session as the seminar materials are implemented. It does not run participant-supplied code, and it does not silently recode data or select a model.
 
@@ -59,6 +60,18 @@ The third unit provides:
 - a 44-authored-frame Beamer deck, plus supplied repeating opening and closing template pages, delivered directly to the seminar owner rather than versioned in GitHub.
 
 > **Temporal boundary:** The Session 2.1 computation is not a general TERGM with contemporaneous structural dependence, a Monte Carlo likelihood implementation for such a model, a STERGM formation/dissolution decomposition, a continuous-time model, or a causal analysis. Its scope is stated in [`docs/session2_1_methods.md`](docs/session2_1_methods.md).
+
+### Session 2.2 — Separable TERGMs for Formation and Dissolution
+
+The fourth unit provides:
+
+- the same five public repeated-network workflows only where a binary response, repeated observations, and an explicit formation/persistence support are defensible;
+- two separate component supports: prior non-ties for formation and prior ties for persistence, excluding structural unavailability, actor absence, and missingness from both;
+- an exact conditional likelihood only for the explicitly stated, **intercept-only dyad-factorizing baseline STERGM**;
+- component-specific support, coefficient, observed-rate, one-step conditional-simulation, duration-censoring, and whole-transition bootstrap audit panels; and
+- a support-aware repeated-network BYOD workflow with the same stated baseline and no silent conversion to a general MCMC-fitted STERGM.
+
+> **Separable-model boundary:** The Session 2.2 computation distinguishes formation from persistence but does not claim that the components have endogenous ERGM dependence, continuous-time hazards, causal effects, or a general duration model. Its scope is stated in [`docs/session2_2_methods.md`](docs/session2_2_methods.md).
 
 ## Day 1 public worked examples
 
@@ -125,7 +138,7 @@ The Session 1.1 script extracts Florentine, Sampson, and Kapferer objects from t
 
 ## Slide delivery
 
-Beamer decks, their PDF exports, and supplied slide-template assets are deliberately **delivered directly to the seminar owner** and are not stored in this GitHub repository. The repository retains the application, computation engines, public-data provenance, and method documentation. The Session 1.2 computation contract is documented in [`docs/session1_2_methods.md`](docs/session1_2_methods.md); the Session 2.1 design and computation boundary are documented in [`docs/session2_1_methods.md`](docs/session2_1_methods.md).
+Beamer decks, their PDF exports, and supplied slide-template assets are deliberately **delivered directly to the seminar owner** and are not stored in this GitHub repository. The repository retains the application, computation engines, public-data provenance, and method documentation. The Session 1.2 computation contract is documented in [`docs/session1_2_methods.md`](docs/session1_2_methods.md); the Session 2.1 design and computation boundary are documented in [`docs/session2_1_methods.md`](docs/session2_1_methods.md); and the Session 2.2 separable baseline is documented in [`docs/session2_2_methods.md`](docs/session2_2_methods.md).
 
 ## License and data attribution
 
