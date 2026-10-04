@@ -29,6 +29,18 @@ PALETTE = {
     "interval": "rgba(37, 99, 235, 0.20)",
 }
 
+STRUCTURAL_LABELS = {
+    "degree_distribution": "Degree distribution",
+    "in_degree_distribution": "In-degree distribution",
+    "out_degree_distribution": "Out-degree distribution",
+    "geodesic_distance_distribution": "Finite geodesic-distance distribution",
+    "directed_geodesic_distance_distribution": "Finite directed geodesic-distance distribution",
+    "edgewise_shared_partner_distribution": "Edgewise shared-partner (ESP) distribution",
+    "dyadwise_shared_partner_distribution": "Dyadwise shared-partner (DSP) distribution",
+    "triad_census": "Directed triad census",
+    "mixing_matrix": "Categorical mixing matrix",
+}
+
 
 def _read_csv(upload: Any) -> pd.DataFrame:
     """Read a UTF-8 CSV upload without any silent transformation."""
@@ -218,7 +230,7 @@ def _simulation_figure(rows: list[dict[str, Any]], prefix: str, label: str, yaxi
 
 
 def _duration_figure(result: dict[str, Any]) -> go.Figure:
-    """Show only completed observed spells, never treating censored spells as complete."""
+    """Compare complete observed spells to the stated geometric baseline reference."""
     data = pd.DataFrame(result["duration_audit"]["complete_spell_distribution"])
     figure = go.Figure()
     if data.empty:
@@ -237,16 +249,191 @@ def _duration_figure(result: dict[str, Any]) -> go.Figure:
                 name="Complete observed spells",
             )
         )
+        probability = float(result["persistence"]["event_probability"])
+        expected = data["complete_spells"].sum() * (1 - probability) * probability ** (
+            data["observed_duration_intervals"].astype(float) - 1
+        )
+        figure.add_trace(
+            go.Scatter(
+                x=data["observed_duration_intervals"],
+                y=expected,
+                mode="lines+markers",
+                line={"color": PALETTE["formation"], "width": 3},
+                name="Geometric baseline reference",
+            )
+        )
     figure.update_layout(
-        title="Observed complete tie-spell durations (censored spells excluded)",
+        title="Complete observed tie-spell durations versus geometric baseline reference",
         template="plotly_white",
         height=330,
-        margin={"l": 35, "r": 20, "t": 55, "b": 55},
+        margin={"l": 35, "r": 20, "t": 55, "b": 85},
         xaxis_title="Observed duration in panel intervals",
         yaxis_title="Complete observed spells",
+        legend={"orientation": "h", "y": -0.30},
+    )
+    return figure
+
+
+def _duration_survival_figure(result: dict[str, Any]) -> go.Figure:
+    """Show descriptive uncensored survival against the baseline survival law."""
+    data = pd.DataFrame(result["duration_audit"]["complete_spell_distribution"])
+    figure = go.Figure()
+    if data.empty:
+        figure.add_annotation(
+            text="No complete observed spells are available for a descriptive duration curve.",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+        )
+    else:
+        durations = data["observed_duration_intervals"].astype(int).sort_values().tolist()
+        counts = data.set_index("observed_duration_intervals")["complete_spells"].to_dict()
+        total = sum(counts.values())
+        observed_survival = [
+            sum(count for value, count in counts.items() if value >= duration) / total
+            for duration in durations
+        ]
+        probability = float(result["persistence"]["event_probability"])
+        figure.add_trace(
+            go.Scatter(
+                x=durations,
+                y=observed_survival,
+                mode="lines+markers",
+                name="Complete observed spells only",
+                line={"color": PALETTE["observed"], "width": 3},
+            )
+        )
+        figure.add_trace(
+            go.Scatter(
+                x=durations,
+                y=[probability ** (duration - 1) for duration in durations],
+                mode="lines+markers",
+                name="Geometric baseline survival",
+                line={"color": PALETTE["persistence"], "dash": "dash", "width": 3},
+            )
+        )
+    figure.update_layout(
+        title="Descriptive complete-spell survival versus geometric baseline survival",
+        template="plotly_white",
+        height=330,
+        margin={"l": 35, "r": 20, "t": 55, "b": 85},
+        xaxis_title="Observed duration in panel intervals",
+        yaxis_title="Proportion surviving to duration",
+        yaxis_range=[0, 1],
+        legend={"orientation": "h", "y": -0.30},
+    )
+    return figure
+
+
+def _structural_distribution_figure(
+    rows: list[dict[str, Any]], label: str
+) -> go.Figure:
+    """Plot one omitted structural distribution against a conditional simulation envelope."""
+    data = pd.DataFrame(rows)
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=data["category"].tolist() + data["category"].tolist()[::-1],
+            y=data["simulated_upper_975"].tolist()
+            + data["simulated_lower_025"].tolist()[::-1],
+            fill="toself",
+            fillcolor=PALETTE["interval"],
+            line={"color": "rgba(0,0,0,0)"},
+            name="95% conditional simulation envelope",
+            hoverinfo="skip",
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=data["category"],
+            y=data["simulated_mean"],
+            mode="lines+markers",
+            name="Simulation mean",
+            line={"color": PALETTE["mean"], "width": 3},
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=data["category"],
+            y=data["observed"],
+            mode="markers",
+            name="Observed",
+            marker={"color": PALETTE["observed"], "size": 10, "symbol": "diamond"},
+        )
+    )
+    figure.update_layout(
+        title=f"{label}: observed versus conditional simulations",
+        template="plotly_white",
+        height=345,
+        margin={"l": 35, "r": 20, "t": 55, "b": 85},
+        xaxis_title="Statistic category",
+        yaxis_title="Number of nodes, dyads, paths, or motifs",
+        legend={"orientation": "h", "y": -0.30},
+    )
+    return figure
+
+
+def _structural_scalar_figure(envelope: dict[str, float], label: str) -> go.Figure:
+    """Plot one omitted scalar structure statistic against its simulation envelope."""
+    error_plus = envelope["simulated_upper_975"] - envelope["simulated_mean"]
+    error_minus = envelope["simulated_mean"] - envelope["simulated_lower_025"]
+    figure = go.Figure()
+    figure.add_trace(
+        go.Bar(x=["Observed"], y=[envelope["observed"]], marker_color=PALETTE["observed"])
+    )
+    figure.add_trace(
+        go.Bar(
+            x=["Conditional simulations"],
+            y=[envelope["simulated_mean"]],
+            error_y={
+                "type": "data",
+                "array": [error_plus],
+                "arrayminus": [error_minus],
+                "visible": True,
+            },
+            marker_color=PALETTE["mean"],
+        )
+    )
+    figure.update_layout(
+        title=f"{label}: observed versus conditional simulations",
+        template="plotly_white",
+        height=320,
+        margin={"l": 35, "r": 20, "t": 55, "b": 45},
+        yaxis_title="Statistic value",
         showlegend=False,
     )
     return figure
+
+
+def _mixing_figures(rows: list[dict[str, Any]], attribute: str) -> tuple[go.Figure, go.Figure]:
+    """Render observed and mean simulated categorical mixing matrices."""
+    data = pd.DataFrame(rows)
+    pairs = data["category"].str.split(" → ", expand=True)
+    groups = sorted(set(pairs[0]) | set(pairs[1]))
+    observed = pd.DataFrame(0.0, index=groups, columns=groups)
+    simulated = pd.DataFrame(0.0, index=groups, columns=groups)
+    for position, row in data.iterrows():
+        source, target = pairs.iloc[position]
+        observed.loc[source, target] = row["observed"]
+        simulated.loc[source, target] = row["simulated_mean"]
+    common = {
+        "template": "plotly_white",
+        "height": 355,
+        "margin": {"l": 35, "r": 20, "t": 55, "b": 55},
+        "xaxis_title": attribute,
+        "yaxis_title": attribute,
+    }
+    observed_figure = go.Figure(
+        go.Heatmap(z=observed.values, x=groups, y=groups, colorscale="Purples")
+    )
+    observed_figure.update_layout(title=f"Observed mixing matrix: {attribute}", **common)
+    simulated_figure = go.Figure(
+        go.Heatmap(z=simulated.values, x=groups, y=groups, colorscale="Blues")
+    )
+    simulated_figure.update_layout(
+        title=f"Conditional-simulation mean mixing matrix: {attribute}", **common
+    )
+    return observed_figure, simulated_figure
 
 
 def _bootstrap_figure(result: dict[str, Any]) -> go.Figure | None:
@@ -315,6 +502,48 @@ def _record(label: str, recipe_note: str, result: dict[str, Any]) -> str:
     )
 
 
+def _render_structural_gof(result: dict[str, Any], key: str) -> None:
+    """Render omitted structural GOF targets appropriate to the declared network type."""
+    audits = result["structural_gof"]
+    if not audits:
+        st.info("No transition had enough observed support for structural goodness-of-fit plots.")
+        return
+    labels = [str(item["transition"]) for item in audits]
+    selected_label = st.selectbox(
+        "Choose an observed transition for structural goodness-of-fit",
+        labels,
+        key=f"{key}_structural_transition",
+    )
+    audit = next(item for item in audits if item["transition"] == selected_label)
+    st.caption(
+        "These are omitted structural targets, generated from networks simulated conditionally on the observed preceding network and support. "
+        "They are not fitted sufficient statistics of this intercept-only baseline."
+    )
+    for metric, rows in audit["distribution_metrics"].items():
+        label = STRUCTURAL_LABELS[metric]
+        if metric == "mixing_matrix":
+            observed, simulated = _mixing_figures(rows, str(audit["attribute"]))
+            left, right = st.columns(2)
+            with left:
+                st.plotly_chart(observed, width="stretch", key=f"{key}_{metric}_observed")
+            with right:
+                st.plotly_chart(simulated, width="stretch", key=f"{key}_{metric}_simulated")
+        else:
+            st.plotly_chart(
+                _structural_distribution_figure(rows, label),
+                width="stretch",
+                key=f"{key}_{metric}",
+            )
+    for metric, envelope in audit["scalar_metrics"].items():
+        label = "Reciprocity rate" if metric == "reciprocity_rate" else metric
+        st.plotly_chart(
+            _structural_scalar_figure(envelope, label),
+            width="stretch",
+            key=f"{key}_{metric}",
+        )
+    st.info(str(audit["notes"]))
+
+
 def _render_results(result: dict[str, Any], key: str) -> None:
     """Render every baseline STERGM audit plot in a fixed, visible order."""
     st.success("The Session 2.2 separable calculation finished. Interpret formation and persistence only after inspecting their distinct supports and diagnostics.")
@@ -349,7 +578,12 @@ def _render_results(result: dict[str, Any], key: str) -> None:
     with tabs[3]:
         st.plotly_chart(_simulation_figure(rows, "mean_degree", "Mean degree: observed versus separable simulations", "Mean degree"), width="stretch", key=f"{key}_mean_degree")
     st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
-    st.markdown("#### 4. Tie-duration and censoring audit")
+    st.markdown("#### 4. Omitted structural goodness-of-fit audit")
+    st.caption(
+        "The available structural plots depend on directionality and declared node attributes: degree and finite geodesics always; ESP/DSP for undirected data; in-/out-degree, reciprocity, and a triad census for sufficiently small directed data; and mixing only when a time-stable categorical attribute is supplied."
+    )
+    _render_structural_gof(result, key)
+    st.markdown("#### 5. Tie-duration and censoring audit")
     duration = result["duration_audit"]
     st.metric("Baseline expected duration in panel intervals", f"{result['expected_duration_intervals']:.2f}")
     st.caption("The expected duration equals 1/(1−persistence probability) only for this homogeneous, dyad-independent, memoryless baseline persistence component. It is not a continuous-time duration estimate.")
@@ -359,7 +593,15 @@ def _render_results(result: dict[str, Any], key: str) -> None:
     metrics[2].metric("Right-censored spells", duration["right_censored_spells"])
     metrics[3].metric("Support-censored spells", duration["support_censored_spells"])
     st.plotly_chart(_duration_figure(result), width="stretch", key=f"{key}_duration")
-    st.markdown("#### 5. Whole-transition bootstrap sensitivity")
+    st.plotly_chart(
+        _duration_survival_figure(result),
+        width="stretch",
+        key=f"{key}_duration_survival",
+    )
+    st.caption(
+        "Both duration references exclude censored spells from the empirical curve; they are descriptive comparisons, not a censoring-adjusted survival analysis or a continuous-time hazard estimate."
+    )
+    st.markdown("#### 6. Whole-transition bootstrap sensitivity")
     bootstrap_figure = _bootstrap_figure(result)
     if bootstrap_figure is None:
         st.info(result["bootstrap"]["reason"])
@@ -509,9 +751,11 @@ def render_session2_2() -> None:
             "3. Fit separate component likelihoods and never label a persistence coefficient as a dissolution coefficient without reversing its implication.\n"
             "4. Audit component supports, observed process rates, coefficient stability, and numerical warnings.\n"
             "5. Simulate each next observed network conditionally and compare ties, density, formation, dissolution, persistence, stability, and mean degree.\n"
-            "6. Inspect censored tie-spell summaries; use the geometric expected duration only under the stated homogeneous, dyad-independent, memoryless baseline."
+            "6. Compare omitted structural targets when they are meaningful: degree and geodesic distributions, ESP/DSP for undirected networks, and in-/out-degree, reciprocity, triads, or mixing as supported by the data.\n"
+            "7. Inspect censored tie-spell summaries; use the geometric expected duration only under the stated homogeneous, dyad-independent, memoryless baseline."
         )
         st.warning("The implemented model is intentionally narrow: each component is intercept-only and factorizes over its own support, so its conditional likelihood is exact. A general STERGM may include endogenous formation or persistence statistics and can require MCMC estimation; this page does not silently approximate one.")
+        st.info("For a general network-dependent STERGM, audit component-specific MCMC trace, autocorrelation, and sampled-statistic distributions, plus structural goodness of fit—degree, shared partners, geodesics, reciprocity, mixing, triads, or other substantively omitted statistics—as appropriate to the fitted model.")
     with worked:
         _worked_examples()
     with byod:

@@ -55,16 +55,19 @@ The app renders every following output after a successful fit:
 2. component coefficient estimates with Wald intervals;
 3. observed formation and persistence rates against the fitted homogeneous probabilities;
 4. one-step conditional simulation envelopes for current ties, density, formations, dissolutions, persistent ties, overall stability, and mean degree;
-5. complete observed tie-spell duration counts, left-, right-, and support-censoring counts, and the expected duration under the homogeneous memoryless baseline; and
-6. a whole-transition bootstrap sensitivity interval only when at least five observed transitions are available.
+5. omitted structural goodness-of-fit targets calculated from the same one-step conditional simulations: degree and finite geodesic-distance distributions for every network; ESP/DSP distributions for undirected networks; in- and out-degree, reciprocity, and a triad census for directed networks where the active support has at most 30 vertices; and observed versus simulated categorical mixing matrices when the node table supplies a time-stable categorical attribute;
+6. complete observed tie-spell duration counts and a descriptive complete-spell survival curve against the model-implied geometric reference, with left-, right-, and support-censoring counts stated separately; and
+7. a whole-transition bootstrap sensitivity interval only when at least five observed transitions are available.
 
 The duration quantity `1/(1-persistence probability)` is reported only as a **panel-interval expected duration** under the dyad-independent, time-homogeneous, memoryless persistence baseline. It is not a continuous-time hazard estimate, and it is not used to treat censored spells as complete lifetimes.
 
 One-step simulations condition on the observed preceding network and its component supports. They are a model-adequacy check for the implemented baseline, not a causal analysis, multi-step validation, or proof that a general STERGM fits.
 
+For a general network-dependent STERGM, a complete audit also requires **component-specific MCMC diagnostics**—trace plots, autocorrelation plots, and sampled-statistic distributions—for the actual formation and persistence models. Those diagnostics are not fabricated here because the implemented baseline has exact dyad-factorizing component likelihoods and does not use MCMC. The structural plots are therefore explicitly labeled as omitted-statistic goodness-of-fit targets rather than fitted-model diagnostics.
+
 ## BYOD boundary
 
-The BYOD page accepts a node-presence table with `wave`, `id`, and optional `transition_block`; an edge table with `wave`, `source`, and `target`; and an optional observed-risk table. A `transition_block` prevents a missing panel from being bridged. The participant declares directionality, support, and measurement interval; the app validates but does not infer these design choices.
+The BYOD page accepts a node-presence table with `wave`, `id`, optional `transition_block`, and optional declared categorical attributes; an edge table with `wave`, `source`, and `target`; and an optional observed-risk table. A `transition_block` prevents a missing panel from being bridged. When one categorical attribute is time-stable across a transition and has 2–8 observed levels, the app supplies an observed-versus-simulated mixing-matrix plot. The participant declares directionality, support, and measurement interval; the app validates but does not infer these design choices.
 
 ## References
 

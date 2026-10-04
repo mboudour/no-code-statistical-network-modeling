@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any
 
+import networkx as nx
 import numpy as np
 import pandas as pd
 from scipy.special import logit
@@ -277,6 +278,259 @@ def _tie_spell_audit(network: TemporalNetwork) -> dict[str, Any]:
     }
 
 
+def _histogram(values: list[int | str]) -> dict[str, int]:
+    """Return JSON-safe category counts for an observed network statistic."""
+    return {str(key): int(value) for key, value in Counter(values).items()}
+
+
+def _finite_geodesic_histogram(graph: nx.Graph | nx.DiGraph, *, directed: bool) -> dict[str, int]:
+    """Count finite observed geodesics, respecting ordered paths when directed."""
+    index = {node: position for position, node in enumerate(graph.nodes)}
+    distances: list[int] = []
+    for source, reached in nx.all_pairs_shortest_path_length(graph):
+        for target, distance in reached.items():
+            if source == target:
+                continue
+            if directed or index[source] < index[target]:
+                distances.append(int(distance))
+    return _histogram(distances)
+
+
+def _undirected_shared_partner_histograms(
+    graph: nx.Graph, support: set[tuple[str, str]]
+) -> tuple[dict[str, int], dict[str, int]]:
+    """Return edgewise and dyadwise shared-partner distributions on observed support."""
+    neighbors = {node: set(graph.neighbors(node)) for node in graph.nodes}
+    edgewise = [len(neighbors[source] & neighbors[target]) for source, target in graph.edges]
+    dyadwise = [
+        len(neighbors[source] & neighbors[target])
+        for source, target in support
+        if not graph.has_edge(source, target)
+    ]
+    return _histogram(edgewise), _histogram(dyadwise)
+
+
+def _categorical_group_map(
+    network: TemporalNetwork, previous: str, current: str, nodes: list[str]
+) -> tuple[str, dict[str, str]] | None:
+    """Find one declared, time-stable categorical node attribute for optional mixing GOF."""
+    reserved = {"wave", "id", "transition_block"}
+    candidates = [column for column in network.nodes.columns if column not in reserved]
+    for column in candidates:
+        subset = network.nodes.loc[
+            network.nodes["wave"].isin([previous, current]), ["wave", "id", column]
+        ].dropna()
+        if subset.empty:
+            continue
+        values_by_id = subset.groupby("id")[column].nunique()
+        if not set(nodes).issubset(set(values_by_id.index)) or not (values_by_id == 1).all():
+            continue
+        values = subset.drop_duplicates("id").set_index("id")[column].astype(str).to_dict()
+        groups = {str(values[node]) for node in nodes}
+        if 1 < len(groups) <= 8:
+            return column, {str(node): str(values[node]) for node in nodes}
+    return None
+
+
+def _mixing_matrix(
+    edges: set[tuple[str, str]],
+    groups: dict[str, str],
+    *,
+    directed: bool,
+) -> dict[str, int]:
+    """Count ties by a declared categorical attribute, symmetrizing undirected ties."""
+    output: Counter[str] = Counter()
+    for source, target in edges:
+        if source not in groups or target not in groups:
+            continue
+        output[f"{groups[source]} → {groups[target]}"] += 1
+        if not directed and groups[source] != groups[target]:
+            output[f"{groups[target]} → {groups[source]}"] += 1
+    return {key: int(value) for key, value in output.items()}
+
+
+def _structural_histograms(
+    edges: set[tuple[str, str]],
+    nodes: list[str],
+    support: set[tuple[str, str]],
+    *,
+    directed: bool,
+    group_map: dict[str, str] | None,
+) -> tuple[dict[str, dict[str, int]], dict[str, float]]:
+    """Summarize omitted structural features of a simulated or observed endpoint network."""
+    graph: nx.Graph | nx.DiGraph = nx.DiGraph() if directed else nx.Graph()
+    graph.add_nodes_from(nodes)
+    graph.add_edges_from(edges)
+    distributions: dict[str, dict[str, int]] = {}
+    scalars: dict[str, float] = {}
+    if directed:
+        distributions["in_degree_distribution"] = _histogram(
+            [int(value) for _, value in graph.in_degree()]
+        )
+        distributions["out_degree_distribution"] = _histogram(
+            [int(value) for _, value in graph.out_degree()]
+        )
+        distributions["directed_geodesic_distance_distribution"] = _finite_geodesic_histogram(
+            graph, directed=True
+        )
+        edge_count = graph.number_of_edges()
+        scalars["reciprocity_rate"] = (
+            sum(graph.has_edge(target, source) for source, target in graph.edges) / edge_count
+            if edge_count
+            else 0.0
+        )
+        if len(nodes) <= 30:
+            distributions["triad_census"] = {
+                str(key): int(value) for key, value in nx.triadic_census(graph).items()
+            }
+    else:
+        distributions["degree_distribution"] = _histogram(
+            [int(value) for _, value in graph.degree()]
+        )
+        distributions["geodesic_distance_distribution"] = _finite_geodesic_histogram(
+            graph, directed=False
+        )
+        edgewise, dyadwise = _undirected_shared_partner_histograms(graph, support)
+        distributions["edgewise_shared_partner_distribution"] = edgewise
+        distributions["dyadwise_shared_partner_distribution"] = dyadwise
+    if group_map is not None:
+        distributions["mixing_matrix"] = _mixing_matrix(
+            edges, group_map, directed=directed
+        )
+    return distributions, scalars
+
+
+def _distribution_envelope(
+    observed: dict[str, int], simulated: list[dict[str, int]]
+) -> list[dict[str, float | str]]:
+    """Compare an observed count distribution to conditional simulation envelopes."""
+    categories = sorted(
+        set(observed) | set().union(*(set(item) for item in simulated)),
+        key=lambda item: (not item.lstrip("-").isdigit(), item),
+    )
+    rows: list[dict[str, float | str]] = []
+    for category in categories:
+        values = np.asarray([item.get(category, 0) for item in simulated], dtype=float)
+        rows.append(
+            {
+                "category": category,
+                "observed": int(observed.get(category, 0)),
+                "simulated_mean": float(values.mean()),
+                "simulated_lower_025": float(np.quantile(values, 0.025)),
+                "simulated_upper_975": float(np.quantile(values, 0.975)),
+            }
+        )
+    return rows
+
+
+def _scalar_envelope(observed: float, simulated: list[float]) -> dict[str, float]:
+    """Compare one observed scalar statistic to a conditional simulation envelope."""
+    values = np.asarray(simulated, dtype=float)
+    return {
+        "observed": float(observed),
+        "simulated_mean": float(values.mean()),
+        "simulated_lower_025": float(np.quantile(values, 0.025)),
+        "simulated_upper_975": float(np.quantile(values, 0.975)),
+    }
+
+
+def _structural_gof(
+    network: TemporalNetwork,
+    design: dict[str, pd.DataFrame],
+    *,
+    formation_probability: float,
+    persistence_probability: float,
+    simulations: int,
+    seed: int,
+) -> list[dict[str, Any]]:
+    """Audit omitted endpoint structure against one-step baseline simulations."""
+    rng = np.random.default_rng(seed + 4404)
+    formation = design["formation"]
+    persistence = design["persistence"]
+    rows: list[dict[str, Any]] = []
+    draws = max(20, min(int(simulations), 100))
+    for transition in design["transitions"].to_dict(orient="records"):
+        index = int(transition["transition_index"])
+        previous = str(transition["from_wave"])
+        current = str(transition["to_wave"])
+        formation_rows = formation.loc[formation["transition_index"] == index]
+        persistence_rows = persistence.loc[persistence["transition_index"] == index]
+        formation_pairs = list(
+            formation_rows[["source", "target"]].itertuples(index=False, name=None)
+        )
+        persistence_pairs = list(
+            persistence_rows[["source", "target"]].itertuples(index=False, name=None)
+        )
+        support = set(formation_pairs) | set(persistence_pairs)
+        nodes = sorted({node for pair in support for node in pair})
+        if len(nodes) < 2:
+            continue
+        observed_edges = {
+            pair
+            for pair, outcome in zip(
+                formation_pairs, formation_rows["outcome"].tolist(), strict=True
+            )
+            if outcome
+        } | {
+            pair
+            for pair, outcome in zip(
+                persistence_pairs, persistence_rows["outcome"].tolist(), strict=True
+            )
+            if outcome
+        }
+        group_info = _categorical_group_map(network, previous, current, nodes)
+        attribute, group_map = group_info if group_info is not None else (None, None)
+        observed_distributions, observed_scalars = _structural_histograms(
+            observed_edges,
+            nodes,
+            support,
+            directed=network.directed,
+            group_map=group_map,
+        )
+        simulated_distributions: dict[str, list[dict[str, int]]] = {
+            name: [] for name in observed_distributions
+        }
+        simulated_scalars: dict[str, list[float]] = {name: [] for name in observed_scalars}
+        for _ in range(draws):
+            simulated_edges = {
+                pair for pair in formation_pairs if rng.random() < formation_probability
+            } | {
+                pair for pair in persistence_pairs if rng.random() < persistence_probability
+            }
+            distributions, scalars = _structural_histograms(
+                simulated_edges,
+                nodes,
+                support,
+                directed=network.directed,
+                group_map=group_map,
+            )
+            for name, output in simulated_distributions.items():
+                output.append(distributions.get(name, {}))
+            for name, output in simulated_scalars.items():
+                output.append(float(scalars.get(name, 0.0)))
+        rows.append(
+            {
+                "transition": f"{previous} → {current}",
+                "attribute": attribute,
+                "distribution_metrics": {
+                    name: _distribution_envelope(observed, simulated_distributions[name])
+                    for name, observed in observed_distributions.items()
+                },
+                "scalar_metrics": {
+                    name: _scalar_envelope(observed, simulated_scalars[name])
+                    for name, observed in observed_scalars.items()
+                },
+                "notes": (
+                    "Triad census is withheld above 30 active support vertices to avoid a misleadingly slow live calculation. "
+                    "Mixing is unavailable unless the node table declares a time-stable categorical attribute."
+                    if network.directed
+                    else "Mixing is unavailable unless the node table declares a time-stable categorical attribute."
+                ),
+            }
+        )
+    return rows
+
+
 def _bootstrap_components(
     formation: pd.DataFrame,
     persistence: pd.DataFrame,
@@ -372,6 +626,14 @@ def fit_separable_stergm(
         simulations=max(20, min(int(predictive_simulations), 500)),
         seed=int(seed),
     )
+    structural_gof = _structural_gof(
+        network,
+        design,
+        formation_probability=formation_probability,
+        persistence_probability=persistence_probability,
+        simulations=max(20, min(int(predictive_simulations), 100)),
+        seed=int(seed),
+    )
     bootstrap = _bootstrap_components(
         design["formation"],
         design["persistence"],
@@ -394,6 +656,7 @@ def fit_separable_stergm(
             design["transitions"], formation_probability, persistence_probability
         ),
         "one_step_simulations": simulations,
+        "structural_gof": structural_gof,
         "duration_audit": duration,
         "bootstrap": bootstrap,
         "diagnostic_flags": flags,

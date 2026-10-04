@@ -68,7 +68,7 @@ The fourth unit provides:
 - the same five public repeated-network workflows only where a binary response, repeated observations, and an explicit formation/persistence support are defensible;
 - two separate component supports: prior non-ties for formation and prior ties for persistence, excluding structural unavailability, actor absence, and missingness from both;
 - an exact conditional likelihood only for the explicitly stated, **intercept-only dyad-factorizing baseline STERGM**;
-- component-specific support, coefficient, observed-rate, one-step conditional-simulation, duration-censoring, and whole-transition bootstrap audit panels; and
+- component-specific support, coefficient, observed-rate, one-step conditional-simulation, omitted structural goodness-of-fit, duration-censoring, and whole-transition bootstrap audit panels; and
 - a support-aware repeated-network BYOD workflow with the same stated baseline and no silent conversion to a general MCMC-fitted STERGM.
 
 > **Separable-model boundary:** The Session 2.2 computation distinguishes formation from persistence but does not claim that the components have endogenous ERGM dependence, continuous-time hazards, causal effects, or a general duration model. Its scope is stated in [`docs/session2_2_methods.md`](docs/session2_2_methods.md).
