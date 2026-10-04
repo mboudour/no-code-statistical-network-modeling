@@ -2,6 +2,24 @@
 
 Public computation and Beamer-material repository for the **instats seminar, A Guide to Statistical Network Modeling** by **Moses Boudourides**.
 
+[![Streamlit App](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit&logoColor=white)](https://no-code-statistical-network-modeling.onrender.com/) [Open the Streamlit App](https://no-code-statistical-network-modeling.onrender.com/)
+
+---
+
+## Interactive Companion App
+
+The **[Streamlit application](https://no-code-statistical-network-modeling.onrender.com/)** is the public no-code companion for the seminar. It provides the implemented Session 1.1 workflow:
+
+1. **Five worked public networks** — documented static-network examples selected because a binary static exponential-family random graph model is appropriate to their declared support and data structure.
+2. **Guided model specification** — restricted, network-type-compatible foundational statistics rather than automatic model selection.
+3. **Standard R/statnet estimation** — reproducible maximum-likelihood estimation through the `network` and `ergm` packages, available in the public Docker deployment without participant package installation.
+4. **Bring Your Own Data (BYOD)** — node-table and edge-list upload validation that mirrors the worked examples and rejects unsupported valued, temporal, duplicate, or structurally invalid networks.
+5. **Computation record** — a downloadable record of the declared support, selected terms, MCMC settings, results, warnings, and interpretation boundary.
+
+The public companion will expand session by session as the seminar materials are implemented. It does not run participant-supplied code, and it does not silently recode data or select a model.
+
+---
+
 ## Current delivery: Session 1.1
 
 **Foundations of Static Exponential-Family Random Graph Models (ERGMs)**
