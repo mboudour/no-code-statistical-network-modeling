@@ -20,4 +20,4 @@ A valid ERGM specification depends on the actor boundary, admissible dyads, obse
 4. declares raw triangles a cautious educational comparison, not a default recommendation; and
 5. exports the source-specific caveat, formula, MCMC controls, warnings, and results alongside every completed calculation.
 
-Curved terms, degeneracy, goodness-of-fit, temporal ERGMs, STERGMs, and SAOMs are developed in later sessions rather than folded misleadingly into this first static-ERGM interface.
+Session 1.1 introduces the required ERGM diagnostic audit: MCMC trace, autocorrelation, and sampled-statistic checks; simulation-based goodness of fit; and network- or model-specific comparisons. The full standard diagnostic computation, curved terms, and degeneracy-aware refinement are developed in Session 1.2 rather than folded misleadingly into this first static-ERGM interface. Temporal ERGMs, STERGMs, and SAOMs are developed in later sessions.

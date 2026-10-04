@@ -30,7 +30,7 @@ This first unit provides:
 - exactly five publicly sourced, pre-validated network examples;
 - BYOD edge-list and node-table validation that does not silently recode valued, temporal, or structurally incomplete data;
 - a standard R/**statnet** calculation engine (`network` + `ergm`); and
-- a 49-frame Beamer deck, including **46 substantive content frames**, compiled from the supplied seminar template.
+- a 50-frame Beamer deck, including **47 substantive content frames**, compiled from the supplied seminar template.
 
 > **Academic boundary:** An ERGM coefficient is a conditional, model-based log-odds contribution on the declared graph support. It is not a marginal tie probability and is not, by itself, a causal effect.
 

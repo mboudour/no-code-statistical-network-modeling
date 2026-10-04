@@ -208,7 +208,7 @@ def _formula_controls(
         )
     if "triangle" in selected:
         st.warning(
-            "A raw triangle term is shown only to teach the change statistic. It can produce unstable or degenerate specifications; Session 1.2 covers curved alternatives and fit assessment."
+            "A raw triangle term is shown only to teach the change statistic. It can produce unstable or degenerate specifications; Session 1.2 covers curved alternatives and the full standard ERGM diagnostic audit."
         )
     category_options = categorical_attributes(nodes)
     numeric_options = numeric_attributes(nodes)
@@ -523,5 +523,5 @@ def render_session1_1() -> None:
         )
         st.markdown("### Session boundary")
         st.write(
-            "Curved ERGMs, geometrically weighted terms, degeneracy, and full goodness-of-fit workflows are introduced in Session 1.2. Temporal ERGMs, STERGMs, and SAOMs are not substituted for static ERGMs on this page."
+            "Session 1.1 establishes a bounded specification-and-fit workflow. Session 1.2 introduces curved ERGMs, geometrically weighted terms, degeneracy-aware refinement, and the full standard ERGM audit: MCMC diagnostics, simulation-based goodness of fit, and network- and model-specific checks. Temporal ERGMs, STERGMs, and SAOMs are not substituted for static ERGMs on this page."
         )

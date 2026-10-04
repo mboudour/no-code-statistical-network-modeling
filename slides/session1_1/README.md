@@ -2,7 +2,7 @@
 
 - `session1_1.tex` is the complete source for **Session 1.1: Foundations of Static Exponential-Family Random Graph Models**.
 - `first_slide.pdf`, `second_slide.pdf`, and `last_slide.pdf` are the repeating supplied template assets.
-- The deck has **49 Beamer frames** plus included template pages. It contains **46 substantive content frames**, exceeding the requested minimum of 35 after excluding repeating opening/agenda/closing assets.
+- The deck has **50 Beamer frames** plus included template pages. It contains **47 substantive content frames**, exceeding the requested minimum of 35 after excluding repeating opening/agenda/closing assets.
 
 Compile from this directory:
 

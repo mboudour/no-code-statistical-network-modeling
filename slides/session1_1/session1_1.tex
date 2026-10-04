@@ -63,9 +63,9 @@
 \begin{frame}{Companion computations and reproducibility}
 \begin{itemize}
 \item \term{Public repository:} \href{https://github.com/mboudour/no-code-statistical-network-modeling}{\textcolor{blue}{\underline{github.com/mboudour/no-code-statistical-network-modeling}}}.
-\item \term{Companion Streamlit app:} \href{https://no-code-statistical-network-modeling.streamlit.app/}{\textcolor{blue}{\underline{no-code-statistical-network-modeling.streamlit.app}}}; open \term{Five worked public networks} for the five guided public-data workflows.
+\item \term{Companion Streamlit app:} \href{https://no-code-statistical-network-modeling.onrender.com/}{\textcolor{blue}{\underline{no-code-statistical-network-modeling.onrender.com}}}; open \term{Five worked public networks} for the five guided public-data workflows.
 \item \term{No-code workflow:} select a documented public network, inspect its support and covariates, specify a static ERGM, fit it with the standard \texttt{statnet} engine, and preserve the output record.
-\item \term{Scope of this session:} binary \emph{static} graph distributions; temporal models, curved terms, degeneracy, and full goodness-of-fit analysis are developed in later sessions.
+\item \term{Scope of this session:} binary \emph{static} graph distributions; curved terms, degeneracy-aware refinement, and the full standard ERGM diagnostic audit are developed in Session 1.2, while temporal models are developed later.
 \item \term{Principle:} an application can make computations reproducible; it cannot determine a credible network boundary, causal interpretation, or model specification automatically.
 \end{itemize}
 \end{frame}
@@ -118,7 +118,7 @@ By the end of this session, we will be able to:
 \item In an \term{undirected} network, $Y_{ij}=Y_{ji}$ and an unordered pair $\{i,j\}$ has one edge variable.
 \item A graph is \term{loopless} when $Y_{ii}=0$; this is common but must be stated rather than assumed universally.
 \item For a directed loopless binary graph, there are $n(n-1)$ potential ordered dyads.
-\item For an undirected loopless binary graph, there are $\binom{n}{2}$ potential unordered dyads.
+\item For an undirected loopless binary graph, there are $\binom{n}{2}=n(n-1)/2$ potential unordered dyads.
 \end{itemize}
 \end{frame}
 
@@ -302,9 +302,9 @@ For an admissible binary dyad $(i,j)$, let $y^+_{ij}$ and $y^-_{ij}$ agree excep
 =\boldsymbol\theta^{\mathsf T}\Delta_{ij}g(y,X).
 \]
 \begin{itemize}
-\item Each coefficient is a \term{conditional log-odds contribution} for a one-unit change in its statistic.
+\item Each coefficient weights the corresponding \term{change statistic} in the conditional log-odds of a tie.
 \item ``Conditional'' means conditional on the complete remainder of the graph and included covariates.
-\item Exponentiating $\theta_k$ gives a conditional odds multiplier only for a one-unit change in $g_k$ while the remaining change statistics are fixed.
+\item For a toggle with $\Delta_{ij}g_k=1$, exponentiating $\theta_k$ gives the multiplicative contribution of that term to the conditional odds, holding the other change statistics fixed.
 \item This is not a population-average tie probability and is not automatically a causal effect.
 \end{itemize}
 \end{frame}
@@ -313,7 +313,8 @@ For an admissible binary dyad $(i,j)$, let $y^+_{ij}$ and $y^-_{ij}$ agree excep
 \begin{itemize}
 \item The conditional-logit identity applies when both $y^+_{ij}$ and $y^-_{ij}$ belong to $\mathcal{Y}$.
 \item A structural zero has no binary toggle comparison because its tie-present state is not admissible.
-\item Fixed-degree, bipartite, or other constrained supports can restrict which toggles are valid.
+\item Constrained supports can restrict which single-edge toggles are valid; for example, fixed-degree support generally requires degree-preserving moves rather than arbitrary single-edge toggles.
+\item Bipartite support permits toggles only across modes.
 \item Before interpreting a coefficient, verify that the corresponding tie comparison is defined under the network's stated support.
 \item Software options for directedness, bipartite structure, missing ties, and constraints are statistical assumptions, not merely formatting controls.
 \end{itemize}
@@ -383,8 +384,8 @@ g_{\mathrm{match}}(y,x)=\sum_{i<j}y_{ij}\ind(x_i=x_j).
 \]
 \begin{itemize}
 \item A positive matching coefficient favors same-category ties relative to cross-category ties after other terms are held fixed.
-\item A \term{mixing matrix} uses category-pair statistics $g_{ab}(y)=\sum_{i,j}y_{ij}\ind(x_i=a,x_j=b)$.
-\item Full mixing can reveal asymmetric or category-specific relations that a single match indicator conceals.
+\item A \term{mixing matrix} represents ties through category-pair statistics, allowing category-specific patterns that a single matching statistic can conceal.
+\item Directed and undirected mixing statistics must be defined separately; an undirected category-pair representation must not double-count dyads.
 \item Homophily coefficients do not automatically identify preference: opportunity, group size, unmeasured similarity, and boundary design may contribute.
 \end{itemize}
 \end{frame}
@@ -434,9 +435,9 @@ g_{\mathrm{match}}(y,x)=\sum_{i<j}y_{ij}\ind(x_i=x_j).
 
 \begin{frame}{Maximum pseudolikelihood: useful but limited}
 \begin{itemize}
-\item \term{Maximum pseudolikelihood estimation} (MPLE) multiplies conditional tie probabilities as if they were an independent likelihood contribution.
+\item \term{Maximum pseudolikelihood estimation} (MPLE) forms a pseudolikelihood by multiplying the full conditional probabilities of individual dyads, rather than evaluating the joint ERGM likelihood.
 \item It is computationally convenient and can provide a starting value for MCMC estimation.
-\item Under dependence, MPLE standard errors and point estimates can be biased or overconfident relative to the likelihood target.
+\item Under dependence, this product of full conditionals is not the joint ERGM likelihood; standard errors and point estimates can be biased or overconfident relative to the likelihood target.
 \item A logistic-regression-looking output is not evidence that dependence has disappeared.
 \item The app labels pseudolikelihood as an approximation; reported primary results use the standard simulation-based ERGM engine when it converges.
 \end{itemize}
@@ -449,6 +450,16 @@ g_{\mathrm{match}}(y,x)=\sum_{i<j}y_{ij}\ind(x_i=x_j).
 \item Model selection based only on coefficient significance risks specification search and selective reporting.
 \item Report estimates, uncertainty, simulation settings, diagnostics, and the scope of the population to which the observed network pertains.
 \item Avoid dichotomous conclusions such as ``proved a network mechanism.''
+\end{itemize}
+\end{frame}
+
+\begin{frame}{ERGM diagnostic audit}
+\begin{itemize}
+\item \term{Estimation / MCMC:} inspect trace plots, autocorrelation plots, and sampled-statistic distributions.
+\item \term{Goodness of fit:} compare observed and simulated degree, geodesic-distance, edgewise shared-partner, and dyadwise shared-partner distributions when they are meaningful for the support.
+\item \term{Model-specific checks:} examine reciprocity, mixing, indegree/outdegree, triad census, component size, or other substantively important features not directly fitted.
+\item A converged MCMC chain does not imply good model fit: convergence concerns estimation behavior, whereas goodness of fit concerns the distribution of networks generated by the fitted model.
+\item Retain diagnostic plots, simulation settings, and unresolved discrepancies in the reproducibility record; the full standard diagnostic workflow is developed in Session 1.2.
 \end{itemize}
 \end{frame}
 
@@ -474,7 +485,7 @@ Each example is accompanied by source, data dictionary, validity warning, and re
 \item \term{Question:} are business ties associated with documented family attributes after accounting for baseline density?
 \item \term{Data object:} one static, undirected, binary family business network with actor attributes.
 \item \term{Foundational specification:} an edges term plus a pre-specified attribute term or matching statistic that is meaningful for the recorded families.
-\item \term{Computation:} compare observed statistics to the model's simulated distribution and inspect conditional coefficient estimates.
+\item \term{Computation:} inspect estimation diagnostics and conditional coefficient estimates, then compare substantively relevant observed network features with their distributions under simulated networks.
 \item \term{Limit:} the small historical network supports a focused illustration, not a general causal claim about wealth or political influence.
 \end{itemize}
 \end{frame}
@@ -524,7 +535,7 @@ Each example is accompanied by source, data dictionary, validity warning, and re
 \item Select one of the five public networks and read its source, network-type, and scope note.
 \item Inspect actor count, admissible dyads, density, directionality, missingness, attributes, and degree distribution.
 \item Choose a small supported formula from the session's available terms; the app prevents directed-only terms in undirected data.
-\item Run the standard \texttt{statnet} ERGM computation; examine coefficient table, MCMC messages, and simulated-statistic comparison.
+\item Run the standard \texttt{statnet} ERGM computation; examine the coefficient table, MCMC messages, and model limitations before the full diagnostic audit in Session 1.2.
 \item Download a Markdown computation record containing data source, support, formula, software settings, results, warnings, and limitations.
 \end{enumerate}
 \end{frame}
@@ -564,7 +575,7 @@ Each example is accompanied by source, data dictionary, validity warning, and re
 \item A static ERGM is a probability model for a graph on an explicitly defined support.
 \item Its parameters weight \term{network statistics}; they are interpreted through conditional changes under the rest of the graph.
 \item Data definition, boundaries, structural zeros, and covariate timing are part of the statistical model.
-\item MCMC computation is required because dependence makes the normalizing constant intractable in general.
+\item For most nontrivial dependent ERGMs, simulation-based methods such as MCMC are used because the normalizing constant cannot be evaluated directly.
 \item Next: \term{curved ERGMs, stable structural terms, fit, and degeneracy} in Session 1.2.
 \end{itemize}
 \end{frame}
