@@ -8,15 +8,16 @@ Public computation repository for the **instats seminar, A Guide to Statistical 
 
 ## Interactive Companion App
 
-The **[Streamlit application hosted on Render](https://no-code-statistical-network-modeling.onrender.com/)** is the public no-code companion for the seminar. It provides implemented Day 1 workflows for Sessions 1.1 and 1.2, plus Day 2 workflows for Sessions 2.1 and 2.2:
+The **[Streamlit application hosted on Render](https://no-code-statistical-network-modeling.onrender.com/)** is the public no-code companion for the seminar. It provides implemented Day 1 workflows for Sessions 1.1 and 1.2, Day 2 workflows for Sessions 2.1 and 2.2, and Day 3 workflows for Sessions 3.1 and 3.2:
 
 1. **Five worked public networks per session** — documented static-network examples selected only where that session's stated method is valid for the declared support and data structure.
 2. **Guided model specification** — Session 1.1 provides foundational terms; Session 1.2 adds support-checked geometrically weighted terms, fixed-decay stability models, and bounded single-decay sensitivity fits.
 3. **Standard R/statnet estimation and audit** — reproducible maximum-likelihood estimation through the `network` and `ergm` packages, including the full Session 1.2 MCMC, GOF, and support-specific simulation audit.
 4. **Session 2.1 temporal computation** — exactly five public repeated-network workflows, first-order lag-only TERGMs with explicitly constructed joint risk sets, transition-count audits, one-step conditional simulations, and transition-block bootstrap sensitivity checks where temporal replication permits them.
 5. **Session 2.2 separable computation** — the same five public repeated-network workflows are evaluated through distinct formation and persistence supports, component-specific rate and coefficient audits, one-step simulation envelopes, tie-spell censoring, and a whole-transition bootstrap only where temporal replication permits it.
-6. **Bring Your Own Data (BYOD)** — node-table and edge-list upload validation that mirrors the worked examples and rejects unsupported valued, rank-order, multiplex, duplicate, or structurally invalid networks.
-7. **Computation record** — a downloadable record of the declared support, stated formula, settings, diagnostic outputs, warnings, and interpretation boundary.
+6. **Day 3 actor-oriented computation** — exactly five public RSiena network-only workflows for Session 3.1 and five public RSiena network--behavior coevolution workflows for Session 3.2, with explicit balanced-panel support, selection/influence boundaries, convergence diagnostics, and simulation-based goodness-of-fit plots.
+7. **Bring Your Own Data (BYOD)** — node-table and edge-list upload validation that mirrors the worked examples and rejects unsupported valued, rank-order, multiplex, duplicate, or structurally invalid networks. Session 3.2 also requires a complete repeated numeric behavior on the retained actor panel.
+8. **Computation record** — a downloadable record of the declared support, stated formula, settings, diagnostic outputs, warnings, and interpretation boundary.
 
 The public companion will expand session by session as the seminar materials are implemented. It does not run participant-supplied code, and it does not silently recode data or select a model.
 
@@ -72,6 +73,28 @@ The fourth unit provides:
 - a support-aware repeated-network BYOD workflow with the same stated baseline and no silent conversion to a general MCMC-fitted STERGM.
 
 > **Separable-model boundary:** The Session 2.2 computation distinguishes formation from persistence but does not claim that the components have endogenous ERGM dependence, continuous-time hazards, causal effects, or a general duration model. Its scope is stated in [`docs/session2_2_methods.md`](docs/session2_2_methods.md).
+
+## Current delivery: Day 3 — Sessions 3.1 and 3.2
+
+### Session 3.1 — SAOMs for Actor-Driven Network Dynamics
+
+The fifth unit provides:
+
+- exactly five public repeated-network workflows: Knecht classroom friendship, RSiena s50 friendship, full Glasgow friendship, Coleman high-school friendship, and annual COW alliances;
+- an RSiena network-only actor-oriented model with period-specific rates, density, directed reciprocity where appropriate, and the compatible directed-triplet or undirected-triad closure effect;
+- visible observed-density, coefficient, convergence-ratio, degree, and compatible triad-census simulation-audit plots; and
+- support-aware BYOD validation for repeated loopless binary networks.
+
+### Session 3.2 — SAOMs for Selection and Influence
+
+The sixth unit provides:
+
+- exactly five documented public coevolution workflows: Knecht friendship--delinquency, Knecht friendship--alcohol, Glasgow friendship--alcohol, Glasgow friendship--cannabis, and s50 friendship--smoking;
+- an explicitly stated joint RSiena model with behavior alter, ego, and similarity selection effects; behavior linear and quadratic shape effects; and average-similarity influence;
+- visible observed-density and behavior-mean plots, coefficient and convergence plots, network degree/triad simulation audits, and behavior-distribution simulation audit; and
+- a conservative complete-behavior support rule that is displayed for public workflows and enforced without silent imputation for BYOD uploads.
+
+> **Day 3 boundary:** The labels *selection* and *influence* locate effects in the stated joint stochastic model. They do not by themselves identify causal peer influence, remove common causes, or recover unobserved microstep ordering. See [`docs/session3_methods.md`](docs/session3_methods.md).
 
 ## Day 1 public worked examples
 
@@ -134,11 +157,11 @@ The committed CSV files are reproducibly generated from publicly documented sour
 .venv/bin/python scripts/build_session2_1_public_data.py
 ```
 
-The Session 1.1 script extracts Florentine, Sampson, and Kapferer objects from the installed `ergm` version; downloads the Lazega public archive from the Oxford RSiena source; and reads NetworkX's documented Davis affiliation graph. The Session 2.1 script preserves each repeated relation, its relevant support rule, and its documented source rather than pooling waves. It reads public Statnet/RSiena panels and source archives for the COW annual series; each script checks its documented output before writing files.
+The Session 1.1 script extracts Florentine, Sampson, and Kapferer objects from the installed `ergm` version; downloads the Lazega public archive from the Oxford RSiena source; and reads NetworkX's documented Davis affiliation graph. The Session 2.1 script preserves each repeated relation, its relevant support rule, and its documented source rather than pooling waves. It reads public Statnet/RSiena panels and source archives for the COW annual series; each script checks its documented output before writing files. Day 3 public-panel extraction is documented in [`scripts/build_day3_public_data.R`](scripts/build_day3_public_data.R) and [`data/day3_saom_catalog.json`](data/day3_saom_catalog.json).
 
 ## Slide delivery
 
-Beamer decks, their PDF exports, and supplied slide-template assets are deliberately **delivered directly to the seminar owner** and are not stored in this GitHub repository. The repository retains the application, computation engines, public-data provenance, and method documentation. The Session 1.2 computation contract is documented in [`docs/session1_2_methods.md`](docs/session1_2_methods.md); the Session 2.1 design and computation boundary are documented in [`docs/session2_1_methods.md`](docs/session2_1_methods.md); and the Session 2.2 separable baseline is documented in [`docs/session2_2_methods.md`](docs/session2_2_methods.md).
+Beamer decks, their PDF exports, and supplied slide-template assets are deliberately **delivered directly to the seminar owner** and are not stored in this GitHub repository. The repository retains the application, computation engines, public-data provenance, and method documentation. The Session 1.2 computation contract is documented in [`docs/session1_2_methods.md`](docs/session1_2_methods.md); the Session 2.1 design and computation boundary are documented in [`docs/session2_1_methods.md`](docs/session2_1_methods.md); the Session 2.2 separable baseline is documented in [`docs/session2_2_methods.md`](docs/session2_2_methods.md); and the Day 3 RSiena boundary is documented in [`docs/session3_methods.md`](docs/session3_methods.md).
 
 ## License and data attribution
 

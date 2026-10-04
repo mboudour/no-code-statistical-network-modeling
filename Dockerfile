@@ -23,6 +23,7 @@ RUN apt-get update \
         r-cran-jsonlite \
         r-cran-network \
         r-cran-rglpk \
+        r-cran-rsiena \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/requirements.txt
@@ -35,7 +36,7 @@ COPY data /app/data
 COPY r /app/r
 
 # Fail the image build if the required computation engine is absent.
-RUN Rscript -e "stopifnot(requireNamespace('network', quietly=TRUE), requireNamespace('ergm', quietly=TRUE), requireNamespace('jsonlite', quietly=TRUE), requireNamespace('Rglpk', quietly=TRUE)); cat('R/statnet ERGM engine ready\\n')"
+RUN Rscript -e "stopifnot(requireNamespace('network', quietly=TRUE), requireNamespace('ergm', quietly=TRUE), requireNamespace('jsonlite', quietly=TRUE), requireNamespace('Rglpk', quietly=TRUE), requireNamespace('RSiena', quietly=TRUE)); cat('R/statnet and RSiena engines ready\n')"
 
 EXPOSE 8501
 

@@ -13,11 +13,16 @@ from typing import Any
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 R_FIT_SCRIPT = PROJECT_DIR / "r" / "fit_static_ergm.R"
 R_SESSION12_FIT_SCRIPT = PROJECT_DIR / "r" / "fit_session1_2_ergm.R"
+R_SAOM_FIT_SCRIPT = PROJECT_DIR / "r" / "fit_saom.R"
 R_BOOTSTRAP_SCRIPT = PROJECT_DIR / "r" / "bootstrap_packages.R"
 
 
 class ErgMRuntimeError(RuntimeError):
     """Raised when the R/statnet execution environment is unavailable or returns invalid output."""
+
+
+class SAOMRuntimeError(RuntimeError):
+    """Raised when the pre-provisioned RSiena engine is unavailable or returns an error."""
 
 
 def rscript_path() -> str | None:
@@ -140,7 +145,12 @@ def fit_session12_ergm(
         output_path = directory / "output.json"
         input_path.write_text(json.dumps(payload, ensure_ascii=False))
         completed = subprocess.run(
-            [status["rscript"], str(R_SESSION12_FIT_SCRIPT), str(input_path), str(output_path)],
+            [
+                status["rscript"],
+                str(R_SESSION12_FIT_SCRIPT),
+                str(input_path),
+                str(output_path),
+            ],
             capture_output=True,
             text=True,
             timeout=timeout_seconds,
@@ -158,10 +168,86 @@ def fit_session12_ergm(
         if result.get("status") != "ok":
             raise ErgMRuntimeError(
                 result.get(
-                    "message", "The Session 1.2 ERGM engine returned an unspecified error."
+                    "message",
+                    "The Session 1.2 ERGM engine returned an unspecified error.",
                 )
             )
         for field in ("warnings", "diagnostic_flags"):
+            if isinstance(result.get(field), str):
+                result[field] = [result[field]]
+            elif result.get(field) is None:
+                result[field] = []
+        result["r_stdout"] = completed.stdout.strip()
+        result["r_stderr"] = completed.stderr.strip()
+        return result
+
+
+def saom_engine_status(timeout_seconds: int = 15) -> dict[str, Any]:
+    """Report the deployed RSiena runtime without installing packages at request time."""
+    executable = rscript_path()
+    if executable is None:
+        return {"available": False, "reason": "Rscript is not installed."}
+    completed = subprocess.run(
+        [
+            executable,
+            "-e",
+            "cat(if (requireNamespace('RSiena', quietly=TRUE) && requireNamespace('jsonlite', quietly=TRUE)) 'READY' else 'MISSING')",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=timeout_seconds,
+        env=_environment(),
+        check=False,
+    )
+    ready = completed.returncode == 0 and completed.stdout.strip() == "READY"
+    return {
+        "available": ready,
+        "reason": "ready"
+        if ready
+        else "The R package `RSiena` is not installed in the active R library.",
+        "rscript": executable,
+        "stderr": completed.stderr.strip(),
+    }
+
+
+def fit_saom(payload: dict[str, Any], timeout_seconds: int = 1200) -> dict[str, Any]:
+    """Run the stated RSiena SAOM without shell interpolation or hidden package installation."""
+    status = saom_engine_status()
+    if not status["available"]:
+        raise SAOMRuntimeError(status["reason"])
+    with tempfile.TemporaryDirectory(prefix="day3_saom_") as temporary_directory:
+        directory = Path(temporary_directory)
+        input_path = directory / "input.json"
+        output_path = directory / "output.json"
+        input_path.write_text(json.dumps(payload, ensure_ascii=False))
+        completed = subprocess.run(
+            [
+                status["rscript"],
+                str(R_SAOM_FIT_SCRIPT),
+                str(input_path),
+                str(output_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+            env=_environment(),
+            check=False,
+        )
+        if not output_path.exists():
+            message = (
+                completed.stderr
+                or completed.stdout
+                or "The RSiena engine did not create a result file."
+            ).strip()
+            raise SAOMRuntimeError(message)
+        result = json.loads(output_path.read_text())
+        if result.get("status") != "ok":
+            raise SAOMRuntimeError(
+                result.get(
+                    "message", "The RSiena engine returned an unspecified error."
+                )
+            )
+        for field in ("notes",):
             if isinstance(result.get(field), str):
                 result[field] = [result[field]]
             elif result.get(field) is None:

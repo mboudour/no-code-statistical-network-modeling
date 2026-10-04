@@ -1,0 +1,96 @@
+{
+  "seminar": "A Guide to Statistical Network Modeling",
+  "sessions": {
+    "3.1": {
+      "title": "SAOMs for Actor-Driven Network Dynamics",
+      "date": "Friday, October 30, 2026",
+      "time": "3:00–4:30 PM GMT"
+    },
+    "3.2": {
+      "title": "SAOMs for Selection and Influence",
+      "date": "Friday, October 30, 2026",
+      "time": "4:30–6:00 PM GMT"
+    }
+  },
+  "base_panels": [
+    {
+      "id": "knecht",
+      "name": "Knecht Dutch classroom friendship panel",
+      "nodes_file": "knecht_friendship_temporal_nodes.csv",
+      "edges_file": "knecht_friendship_temporal_edges.csv",
+      "behavior_file": "saom_knecht_behaviors.csv",
+      "directed": true,
+      "source": "University of Oxford SIENA tutorial / public klas12b release",
+      "source_url": "https://www.stats.ox.ac.uk/~snijders/siena/tutorial2010_data.htm",
+      "network_type": "Directed binary friendship nominations; four observed waves.",
+      "support_rule": "The app retains only actors present in every selected wave; it does not convert pupil absence into a non-tie.",
+      "limit": "The panel has documented missing nominations/attributes and a composition change; coevolution estimates are model-based associations, not causal peer effects."
+    },
+    {
+      "id": "s50",
+      "name": "RSiena s50 friendship teaching panel",
+      "nodes_file": "saom_s50_nodes.csv",
+      "edges_file": "saom_s50_edges.csv",
+      "behavior_file": "saom_s50_behaviors.csv",
+      "directed": true,
+      "source": "RSiena public s50 teaching data",
+      "source_url": "https://www.stats.ox.ac.uk/~snijders/siena/s50_data.zip",
+      "network_type": "Directed binary friendship nominations; three observed waves.",
+      "support_rule": "All 50 actors are retained across the three supplied waves.",
+      "limit": "The source documents s50 as a numerical teaching excerpt rather than a properly delineated population network."
+    },
+    {
+      "id": "glasgow",
+      "name": "Teenage Friends and Lifestyle Study — full Glasgow panel",
+      "nodes_file": "saom_glasgow_nodes.csv",
+      "edges_file": "saom_glasgow_edges.csv",
+      "behavior_file": "saom_glasgow_behaviors.csv",
+      "directed": true,
+      "source": "University of Oxford SIENA full Glasgow release",
+      "source_url": "https://www.stats.ox.ac.uk/~snijders/siena/Glasgow_data.htm",
+      "network_type": "Directed friendship nominations; three observed waves; the response is binary friendship presence, combining source codes 1=best friend and 2=just friend.",
+      "support_rule": "The network-only workflow uses the documented 129-actor all-wave selection and never turns the source's structural-absence code 10 into a non-tie. A coevolution workflow further retains only those selected actors with the stated behavior observed at every selected wave; the app displays that exclusion count.",
+      "limit": "One school-cohort setting with documented composition information; modeled selection and influence do not independently establish causal peer effects."
+    },
+    {
+      "id": "coleman",
+      "name": "Coleman high-school friendship panel",
+      "nodes_file": "coleman_friendship_temporal_nodes.csv",
+      "edges_file": "coleman_friendship_temporal_edges.csv",
+      "behavior_file": null,
+      "directed": true,
+      "source": "CRAN sna::coleman",
+      "source_url": "https://search.r-project.org/CRAN/refmans/sna/html/coleman.html",
+      "network_type": "Directed binary friendship nominations; Fall 1957 and Spring 1958 observations.",
+      "support_rule": "The app retains only actors present at both observed waves.",
+      "limit": "Two waves identify only one observation interval and the public release has no verified repeated actor behavior."
+    },
+    {
+      "id": "cow",
+      "name": "Correlates of War formal-alliance annual panel, 1960–1970",
+      "nodes_file": "cow_alliances_1960_1970_temporal_nodes.csv",
+      "edges_file": "cow_alliances_1960_1970_temporal_edges.csv",
+      "behavior_file": null,
+      "directed": false,
+      "source": "Correlates of War Formal Alliances v4.1",
+      "source_url": "https://correlatesofwar.org/data-sets/formal-alliances/",
+      "network_type": "Annual undirected binary treaty-presence snapshots constructed from documented alliance and state-system records.",
+      "support_rule": "The app uses states present at every selected annual endpoint; state entry and exit are excluded rather than coded as non-ties.",
+      "limit": "This is a transparently constructed annual panel; within-year ordering, treaty mechanism, and causal geopolitical interpretation are not observed."
+    }
+  ],
+  "session31_workflows": [
+    {"id": "s31_knecht", "panel": "knecht", "label": "Knecht: four-wave classroom friendship dynamics", "terms": ["density", "reciprocity", "transitive triplets"]},
+    {"id": "s31_s50", "panel": "s50", "label": "s50: three-wave friendship dynamics teaching panel", "terms": ["density", "reciprocity", "transitive triplets"]},
+    {"id": "s31_glasgow", "panel": "glasgow", "label": "Full Glasgow: three-wave friendship dynamics", "terms": ["density", "reciprocity", "transitive triplets"]},
+    {"id": "s31_coleman", "panel": "coleman", "label": "Coleman: two-wave high-school friendship dynamics", "terms": ["density", "reciprocity", "transitive triplets"]},
+    {"id": "s31_cow", "panel": "cow", "label": "COW: annual undirected alliance dynamics", "terms": ["density", "transitive triads"]}
+  ],
+  "session32_workflows": [
+    {"id": "s32_knecht_delinquency", "panel": "knecht", "behavior": "delinquency", "waves": ["1", "2", "3", "4"], "label": "Knecht friendship–delinquency", "reuse_note": "First of two behavior specifications from the same public classroom panel."},
+    {"id": "s32_knecht_alcohol", "panel": "knecht", "behavior": "alcohol", "waves": ["2", "3", "4"], "label": "Knecht friendship–alcohol", "reuse_note": "Second behavior specification from the same public classroom panel; alcohol is unavailable at wave 1 by design."},
+    {"id": "s32_glasgow_alcohol", "panel": "glasgow", "behavior": "alcohol", "waves": ["1", "2", "3"], "label": "Full Glasgow friendship–alcohol", "reuse_note": "First of two behavior specifications from the full Glasgow release."},
+    {"id": "s32_glasgow_cannabis", "panel": "glasgow", "behavior": "cannabis", "waves": ["1", "2", "3"], "label": "Full Glasgow friendship–cannabis", "reuse_note": "Second behavior specification from the full Glasgow release."},
+    {"id": "s32_s50_smoking", "panel": "s50", "behavior": "smoking", "waves": ["1", "2", "3"], "label": "s50 friendship–smoking", "reuse_note": "A public numerical-teaching subset of the broader Glasgow study, retained for a compact reproducible RSiena workflow."}
+  ]
+}
