@@ -25,6 +25,7 @@ WORKED_RECIPES: tuple[Session22Recipe, ...] = (
         diagnostic_focus=(
             "three component-specific transition supports across four observed school waves",
             "formation, dissolution, persistence, and stability rates with one-step simulation envelopes",
+            "directed structural GOF for in-/out-degree, geodesic distance, reciprocity, and triads",
             "tie-spell censoring and the restricted homogeneous geometric-duration interpretation",
         ),
         support_note="Codes 9 and 10, incidental missingness, structural nonmembership, and the documented departure are unavailable dyads, not non-ties and not dissolution events.",
@@ -37,6 +38,7 @@ WORKED_RECIPES: tuple[Session22Recipe, ...] = (
         diagnostic_focus=(
             "separate opportunity sets for newly created and retained liking nominations",
             "two one-step transition audits for formation, dissolution, and retained ties",
+            "directed structural GOF for in-/out-degree, geodesic distance, reciprocity, and triads",
             "component coefficients and explicitly limited duration information",
         ),
         support_note="The three Statnet liking panels remain separate observations for the same 18 labelled actors; they are not pooled or replaced with a different relation layer.",
@@ -49,6 +51,7 @@ WORKED_RECIPES: tuple[Session22Recipe, ...] = (
         diagnostic_focus=(
             "the distinct formation and persistence supports within the documented Fall-to-Spring transition",
             "formation, dissolution, and survival counts rather than a combined stability coefficient",
+            "directed structural GOF for in-/out-degree, geodesic distance, and reciprocity",
             "a mandatory warning that transition-block resampling and duration inference are unavailable",
         ),
         support_note="The public package has no wave-specific attendance file. Every roster dyad is treated as observed only under the stated fixed-risk-set assumption.",
@@ -61,6 +64,7 @@ WORKED_RECIPES: tuple[Session22Recipe, ...] = (
         diagnostic_focus=(
             "ten annual formation and persistence supports with state entry and exit excluded from risk",
             "one-step state and transition simulations, including alliance turnover and mean degree",
+            "undirected structural GOF for degree, geodesic distance, ESP, and DSP distributions",
             "whole-transition bootstrap sensitivity plus censored annual tie-spell summaries",
         ),
         support_note="Pre-entry and post-exit state dyads are structurally unavailable. A formal alliance tie is binary treaty presence, not a count of treaties or a defence-only relation.",
@@ -73,6 +77,7 @@ WORKED_RECIPES: tuple[Session22Recipe, ...] = (
         diagnostic_focus=(
             "formation and persistence supports under day-specific attendance",
             "conditional daily simulations for ties, density, formation, dissolution, persistence, stability, and mean degree",
+            "undirected structural GOF for degree, geodesic distance, ESP, and DSP distributions",
             "whole-transition bootstrap sensitivity and observed tie-spell censoring",
         ),
         support_note="Beach absence is not an observed non-tie. The gap from date 920 to 922 is never treated as one separable transition.",

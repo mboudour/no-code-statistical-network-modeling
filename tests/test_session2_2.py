@@ -24,6 +24,10 @@ def test_session22_has_exactly_five_public_worked_examples() -> None:
     assert set(recipes_by_identifier()) == set(catalog)
     assert all("formation" in recipe.method_status.lower() for recipe in WORKED_RECIPES)
     assert all("persistence" in recipe.method_status.lower() for recipe in WORKED_RECIPES)
+    assert all(
+        any("structural gof" in item.lower() for item in recipe.diagnostic_focus)
+        for recipe in WORKED_RECIPES
+    )
 
 
 def test_separable_design_partitions_every_joint_risk_dyad() -> None:
