@@ -47,7 +47,7 @@ The application invokes R through a subprocess and uses the mature `statnet` imp
 Rscript r/bootstrap_packages.R
 ```
 
-The Streamlit page reports whether the R engine is available and provides an explicit installation control. It never installs software merely because a user opens a dataset.
+The Streamlit page reports whether the R engine is available and provides an explicit installation control. It never installs software merely because a user opens a dataset. The bootstrap intentionally installs only required runtime dependencies—not optional suggested packages—and uses up to two available workers so first-use setup is substantially smaller and faster.
 
 ### 3. Verify the current unit
 

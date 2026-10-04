@@ -156,11 +156,11 @@ def _engine_panel() -> bool:
     st.warning(status["reason"])
     with st.expander("Install the R/statnet ERGM engine", expanded=False):
         st.write(
-            "The application calls the documented `network` and `ergm` R packages. Installation is explicit; no package is installed merely by opening a dataset."
+            "The application calls the documented `network` and `ergm` R packages. Installation is explicit; it installs only essential runtime dependencies (not optional suggested packages) and uses available parallel workers."
         )
-        if st.button("Install required R packages", key="install_ergm_runtime"):
+        if st.button("Install essential ERGM runtime packages", key="install_ergm_runtime"):
             with st.spinner(
-                "Installing the standard R packages. This may take several minutes on a new deployment."
+                "Installing essential ERGM runtime packages. This is a one-time setup for this deployed environment."
             ):
                 try:
                     result = install_engine()
