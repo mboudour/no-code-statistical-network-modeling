@@ -92,6 +92,9 @@ def test_session12_engine_returns_full_undirected_audit() -> None:
         "component_count",
         "triangle_count",
     }
+    assert result["auxiliary_simulation_checks"]["component_size_distribution"]["title"] == (
+        "Component-size distribution"
+    )
 
 
 def test_session12_engine_uses_generic_bipartite_overlap_labels() -> None:
@@ -144,3 +147,12 @@ def test_session12_computation_uses_precise_trace_and_bipartite_labels() -> None
     assert "mean_second_mode_shared_neighbor_overlap" in interface
     assert "mean_first_mode_shared_neighbor_overlap" in engine
     assert "mean_second_mode_shared_neighbor_overlap" in engine
+
+
+def test_session12_full_audit_includes_mixing_and_component_distributions() -> None:
+    interface = (PROJECT_DIR / "app" / "session1_2_ui.py").read_text()
+    engine = (PROJECT_DIR / "r" / "fit_session1_2_ergm.R").read_text()
+    assert "Mixing matrices / assortative-mixing checks" in interface
+    assert "Component-size distribution" in interface
+    assert "mixing_diagnostics" in engine
+    assert "component_size_distribution" in engine

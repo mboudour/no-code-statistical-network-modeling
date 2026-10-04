@@ -5,6 +5,7 @@ from __future__ import annotations
 from io import StringIO
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -315,6 +316,63 @@ def _gof_panels(result: dict[str, Any], *, key: str) -> None:
         st.warning("GOF warnings returned by R:\n\n" + "\n".join(f"- {item}" for item in gof["warnings"]))
 
 
+def _mixing_figure(item: dict[str, Any]) -> go.Figure:
+    """Plot observed and fitted-model mixing matrices with simulation intervals on hover."""
+    data = pd.DataFrame(item["rows"])
+    levels = list(dict.fromkeys(data["source_level"].tolist()))
+    observed = data.pivot(index="source_level", columns="target_level", values="observed").reindex(index=levels, columns=levels)
+    simulated = data.pivot(index="source_level", columns="target_level", values="simulated_mean").reindex(index=levels, columns=levels)
+    lower = data.pivot(index="source_level", columns="target_level", values="lower_025").reindex(index=levels, columns=levels)
+    upper = data.pivot(index="source_level", columns="target_level", values="upper_975").reindex(index=levels, columns=levels)
+    figure = go.Figure()
+    figure.add_trace(
+        go.Heatmap(
+            x=levels,
+            y=levels,
+            z=observed.to_numpy(),
+            colorscale="Purples",
+            colorbar={"title": "Observed", "x": 0.45},
+            customdata=np.dstack([lower.to_numpy(), upper.to_numpy()]),
+            hovertemplate="Source=%{y}<br>Target=%{x}<br>Observed=%{z}<br>Simulated 95% interval=%{customdata[0]:.2f}–%{customdata[1]:.2f}<extra></extra>",
+            name="Observed",
+        )
+    )
+    figure.add_trace(
+        go.Heatmap(
+            x=levels,
+            y=levels,
+            z=simulated.to_numpy(),
+            colorscale="Teal",
+            colorbar={"title": "Simulated mean", "x": 1.02},
+            customdata=np.dstack([lower.to_numpy(), upper.to_numpy()]),
+            hovertemplate="Source=%{y}<br>Target=%{x}<br>Simulated mean=%{z:.2f}<br>Simulated 95% interval=%{customdata[0]:.2f}–%{customdata[1]:.2f}<extra></extra>",
+            name="Simulated mean",
+            visible=False,
+        )
+    )
+    figure.update_layout(
+        title=f"{item['attribute']} mixing: observed versus fitted-model simulation",
+        template="plotly_white",
+        height=410,
+        margin={"l": 35, "r": 80, "t": 55, "b": 55},
+        updatemenus=[
+            {
+                "type": "buttons",
+                "direction": "right",
+                "x": 0,
+                "y": 1.16,
+                "buttons": [
+                    {"label": "Observed", "method": "update", "args": [{"visible": [True, False]}]},
+                    {"label": "Simulated mean", "method": "update", "args": [{"visible": [False, True]}]},
+                ],
+            }
+        ],
+        xaxis_title="Target attribute level",
+        yaxis_title="Source attribute level",
+    )
+    return figure
+
+
 def _auxiliary_panel(result: dict[str, Any]) -> None:
     """Display omitted-feature simulation checks outside the fitted term list."""
     auxiliary = result["auxiliary_simulation_checks"]
@@ -335,6 +393,30 @@ def _auxiliary_panel(result: dict[str, Any]) -> None:
     st.dataframe(data, width="stretch", hide_index=True)
     st.caption(
         "These checks include network features that may not be directly fitted. A discrepancy is evidence for review, not a command to add terms automatically.")
+    component_distribution = auxiliary.get("component_size_distribution")
+    if component_distribution:
+        st.plotly_chart(
+            _envelope_figure(component_distribution),
+            width="stretch",
+            key="session12_component_size_distribution",
+        )
+        st.caption(
+            "The component-size distribution is compared against fitted-model simulations; it is not replaced by a largest-component summary."
+        )
+    mixing = auxiliary.get("mixing", [])
+    if mixing:
+        st.markdown("##### Mixing matrices / assortative-mixing checks")
+        st.caption(
+            "Every eligible categorical node attribute in the selected public data is used as an omitted structural diagnostic. These comparisons do not make an attribute an automatic causal predictor."
+        )
+        for index, item in enumerate(mixing):
+            st.plotly_chart(
+                _mixing_figure(item),
+                width="stretch",
+                key=f"session12_mixing_{index}_{item['attribute']}",
+            )
+    else:
+        st.info("No categorical node attribute with two to six observed levels was available for a mixing-matrix diagnostic.")
     if auxiliary.get("warnings"):
         st.warning("Auxiliary simulation warnings returned by R:\n\n" + "\n".join(f"- {item}" for item in auxiliary["warnings"]))
 
@@ -357,6 +439,10 @@ def _record(
         _auxiliary_statistic_label(item["statistic"])
         for item in result["auxiliary_simulation_checks"].get("summaries", [])
     )
+    mixing_attributes = ", ".join(
+        str(item["attribute"])
+        for item in result["auxiliary_simulation_checks"].get("mixing", [])
+    ) or "No eligible categorical attribute"
     return f"""# Session 1.2 ERGM computation and diagnostic record
 
 ## Dataset and support
@@ -381,6 +467,8 @@ def _record(
 - **MCMC retained sample size:** {result['mcmc_diagnostics']['sample_size']}
 - **GOF panels:** {gof_titles or 'Unavailable'}
 - **Auxiliary simulated checks:** {auxiliary_titles or 'Unavailable'}
+- **Component-size distribution:** {'Completed' if result['auxiliary_simulation_checks'].get('component_size_distribution') else 'Unavailable'}
+- **Mixing-matrix diagnostics:** {mixing_attributes}
 
 ## Diagnostic flags and warnings
 {warnings}

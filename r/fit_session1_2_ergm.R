@@ -192,6 +192,90 @@ component_sizes <- function(adjacency, directed) {
   sort(sizes, decreasing = TRUE)
 }
 
+component_size_distribution <- function(nw) {
+  adjacency <- network_adjacency(nw)
+  sizes <- component_sizes(adjacency, network::is.directed(nw))
+  counts <- tabulate(sizes, nbins = network.size(nw))
+  names(counts) <- as.character(seq_len(network.size(nw)))
+  counts
+}
+
+summarize_distribution <- function(observed, simulated, title) {
+  simulation_matrix <- do.call(rbind, lapply(simulated, function(item) as.numeric(item)))
+  list(
+    title = title,
+    labels = names(observed),
+    observed = as.numeric(observed),
+    simulated_mean = apply(simulation_matrix, 2L, mean),
+    lower_025 = apply(simulation_matrix, 2L, safe_quantile, probability = 0.025),
+    median = apply(simulation_matrix, 2L, safe_quantile, probability = 0.5),
+    upper_975 = apply(simulation_matrix, 2L, safe_quantile, probability = 0.975)
+  )
+}
+
+categorical_attributes <- function(nw) {
+  attributes <- setdiff(network::list.vertex.attributes(nw), c("mode", "vertex.names"))
+  Filter(function(attribute) {
+    values <- network::get.vertex.attribute(nw, attribute)
+    values <- values[!is.na(values) & as.character(values) != ""]
+    level_count <- length(unique(as.character(values)))
+    level_count >= 2L && level_count <= 6L
+  }, attributes)
+}
+
+mixing_matrix <- function(nw, attribute, levels) {
+  adjacency <- network_adjacency(nw)
+  values <- as.character(network::get.vertex.attribute(nw, attribute))
+  result <- matrix(0, nrow = length(levels), ncol = length(levels), dimnames = list(levels, levels))
+  if (network::is.directed(nw)) {
+    tied <- which(adjacency != 0, arr.ind = TRUE)
+    for (row in seq_len(nrow(tied))) {
+      source <- values[[tied[row, 1L]]]
+      target <- values[[tied[row, 2L]]]
+      if (!is.na(source) && !is.na(target) && source %in% levels && target %in% levels) {
+        result[source, target] <- result[source, target] + 1
+      }
+    }
+  } else {
+    tied <- which(adjacency != 0 & row(adjacency) < col(adjacency), arr.ind = TRUE)
+    for (row in seq_len(nrow(tied))) {
+      source <- values[[tied[row, 1L]]]
+      target <- values[[tied[row, 2L]]]
+      if (!is.na(source) && !is.na(target) && source %in% levels && target %in% levels) {
+        result[source, target] <- result[source, target] + 1
+        result[target, source] <- result[target, source] + 1
+      }
+    }
+  }
+  result
+}
+
+mixing_diagnostics <- function(nw, simulated) {
+  attributes <- categorical_attributes(nw)
+  lapply(attributes, function(attribute) {
+    observed_values <- as.character(network::get.vertex.attribute(nw, attribute))
+    levels <- sort(unique(observed_values[!is.na(observed_values) & observed_values != ""]))
+    observed <- mixing_matrix(nw, attribute, levels)
+    draws <- lapply(simulated, mixing_matrix, attribute = attribute, levels = levels)
+    rows <- list()
+    for (source_index in seq_along(levels)) {
+      for (target_index in seq_along(levels)) {
+        values <- vapply(draws, function(draw) draw[source_index, target_index], numeric(1L))
+        rows[[length(rows) + 1L]] <- list(
+          source_level = levels[[source_index]],
+          target_level = levels[[target_index]],
+          observed = observed[source_index, target_index],
+          simulated_mean = mean(values),
+          lower_025 = safe_quantile(values, 0.025),
+          median = safe_quantile(values, 0.5),
+          upper_975 = safe_quantile(values, 0.975)
+        )
+      }
+    }
+    list(attribute = attribute, directed = network::is.directed(nw), rows = rows)
+  })
+}
+
 auxiliary_statistics <- function(nw) {
   adjacency <- network_adjacency(nw)
   directed <- network::is.directed(nw)
@@ -385,11 +469,28 @@ fit_model <- function(payload) {
   )
   observed_auxiliary <- auxiliary_statistics(nw)
   if (inherits(auxiliary_simulations, "error")) {
-    auxiliary <- list(status = "unavailable", message = safe_message(auxiliary_simulations), warnings = unique(simulation_warnings), summaries = list())
+    auxiliary <- list(
+      status = "unavailable",
+      message = safe_message(auxiliary_simulations),
+      warnings = unique(simulation_warnings),
+      summaries = list(),
+      component_size_distribution = NULL,
+      mixing = list()
+    )
   } else {
     if (inherits(auxiliary_simulations, "network")) auxiliary_simulations <- list(auxiliary_simulations)
     simulated_auxiliary <- lapply(auxiliary_simulations, auxiliary_statistics)
-    auxiliary <- list(status = "ok", warnings = unique(simulation_warnings), summaries = summarize_auxiliary(observed_auxiliary, simulated_auxiliary))
+    auxiliary <- list(
+      status = "ok",
+      warnings = unique(simulation_warnings),
+      summaries = summarize_auxiliary(observed_auxiliary, simulated_auxiliary),
+      component_size_distribution = summarize_distribution(
+        component_size_distribution(nw),
+        lapply(auxiliary_simulations, component_size_distribution),
+        "Component-size distribution"
+      ),
+      mixing = mixing_diagnostics(nw, auxiliary_simulations)
+    )
   }
 
   diagnostic_flags <- unique(c(

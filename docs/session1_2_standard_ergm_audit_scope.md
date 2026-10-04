@@ -14,7 +14,7 @@ The standard goodness-of-fit workflow will simulate networks from the fitted ERG
 
 ## Model- and network-specific checks
 
-The application will add diagnostics whenever they are relevant rather than presenting them as decorative defaults. These include in-degree and out-degree distributions for directed networks; mixing matrices or assortative-mixing checks when nodal attributes are substantively relevant; triad census for appropriate directed or small-network settings; component-size distribution when connectivity matters; and further substantively important statistics that were deliberately omitted from the fitted model.
+The application will add diagnostics whenever they are relevant rather than presenting them as decorative defaults. These include in-degree and out-degree distributions for directed networks; observed-versus-simulated mixing matrices for every eligible categorical nodal attribute; triad census for directed networks; an observed-versus-simulated component-size distribution; and further substantively important statistics that were deliberately omitted from the fitted model. The implementation does not substitute a single largest-component number for the component-size distribution, and it does not reserve mixing diagnostics only for attributes inserted as model terms.
 
 ## Interpretation rule
 
