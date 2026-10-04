@@ -19,6 +19,7 @@ def test_session1_1_requested_slide_corrections_are_present() -> None:
 
     assert text.count(r"\begin{frame}") == 50
     assert "no-code-statistical-network-modeling.onrender.com" in text
+    assert "Companion Streamlit app hosted on Render" in text
     assert "no-code-statistical-network-modeling.streamlit.app" not in text
 
     required = [
@@ -59,3 +60,11 @@ def test_session1_1_app_declares_full_standard_audit_as_session12_scope() -> Non
     text = APP_UI.read_text()
     assert "full standard ERGM diagnostic audit" in text
     assert "MCMC diagnostics, simulation-based goodness of fit" in text
+
+
+def test_session1_1_shows_all_worked_network_choices_without_a_dropdown() -> None:
+    text = APP_UI.read_text()
+    assert "st.radio(" in text
+    assert "Click a dataset to load its worked example" in text
+    assert "All five choices are visible" in text
+    assert "st.selectbox(\n        \"Worked network — 5 datasets available\"" not in text
