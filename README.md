@@ -8,23 +8,23 @@ Public computation and Beamer-material repository for the **instats seminar, A G
 
 ## Interactive Companion App
 
-The **[Streamlit application](https://no-code-statistical-network-modeling.onrender.com/)** is the public no-code companion for the seminar. It provides the implemented Session 1.1 workflow:
+The **[Streamlit application](https://no-code-statistical-network-modeling.onrender.com/)** is the public no-code companion for the seminar. It provides implemented Day 1 workflows for Sessions 1.1 and 1.2:
 
-1. **Five worked public networks** — documented static-network examples selected because a binary static exponential-family random graph model is appropriate to their declared support and data structure.
-2. **Guided model specification** — restricted, network-type-compatible foundational statistics rather than automatic model selection.
-3. **Standard R/statnet estimation** — reproducible maximum-likelihood estimation through the `network` and `ergm` packages, available in the public Docker deployment without participant package installation.
+1. **Five worked public networks per session** — documented static-network examples selected only where that session's stated method is valid for the declared support and data structure.
+2. **Guided model specification** — Session 1.1 provides foundational terms; Session 1.2 adds support-checked geometrically weighted terms, fixed-decay stability models, and bounded single-decay sensitivity fits.
+3. **Standard R/statnet estimation and audit** — reproducible maximum-likelihood estimation through the `network` and `ergm` packages, including the full Session 1.2 MCMC, GOF, and support-specific simulation audit.
 4. **Bring Your Own Data (BYOD)** — node-table and edge-list upload validation that mirrors the worked examples and rejects unsupported valued, temporal, duplicate, or structurally invalid networks.
-5. **Computation record** — a downloadable record of the declared support, selected terms, MCMC settings, results, warnings, and interpretation boundary.
+5. **Computation record** — a downloadable record of the declared support, stated formula, MCMC settings, diagnostic outputs, warnings, and interpretation boundary.
 
 The public companion will expand session by session as the seminar materials are implemented. It does not run participant-supplied code, and it does not silently recode data or select a model.
 
 ---
 
-## Current delivery: Session 1.1
+## Current delivery: Day 1 — Sessions 1.1 and 1.2
 
 **Foundations of Static Exponential-Family Random Graph Models (ERGMs)**
 
-This first unit provides:
+Session 1.1 provides:
 
 - a Streamlit no-code computation page for documented **binary static ERGMs**;
 - exactly five publicly sourced, pre-validated network examples;
@@ -32,17 +32,27 @@ This first unit provides:
 - a standard R/**statnet** calculation engine (`network` + `ergm`); and
 - a 50-frame Beamer deck, including **47 substantive content frames**, compiled from the supplied seminar template.
 
+### Session 1.2 — Curved ERGMs, Fit, and Degeneracy
+
+The second unit provides:
+
+- exactly five public, support-checked curved/stable ERGM workflows;
+- a full standard audit: MCMC trace/autocorrelation/distribution panels, simulation-based GOF, and support-specific omitted-statistic checks;
+- fixed-decay geometrically weighted degree and closure models, plus carefully bounded one-decay curved sensitivity fits;
+- a BYOD audit workflow that preserves declared network support rather than applying inappropriate terms; and
+- a 49-frame Beamer source deck, plus supplied repeating opening and closing template pages, compiled from the seminar template.
+
 > **Academic boundary:** An ERGM coefficient is a conditional, model-based log-odds contribution on the declared graph support. It is not a marginal tie probability and is not, by itself, a causal effect.
 
-## Five public worked examples
+## Day 1 public worked examples
 
-| Example | Static network type | Session 1.1 computation |
+| Example | Static network type | Session 1.1 computation | Session 1.2 computation |
 |---|---|---|
-| Florentine families business ties | Undirected, binary, unipartite | Edges baseline; theory-led actor-covariate comparison |
-| Sampson monastery liking nominations, Wave 3 | Directed, binary, unipartite | Edges + reciprocity; optional documented group matching |
-| Lazega law-firm advice | Directed, binary, unipartite | Edges + reciprocity; optional organizational-attribute hypothesis |
-| Davis Southern Women attendance | Undirected, binary, bipartite | Edges + bipartite degree terms on woman–event support |
-| Kapferer tailor-shop sociational ties | Undirected, binary, unipartite | Edges baseline and carefully labelled closure comparison |
+| Florentine families business ties | Undirected, binary, unipartite | Edges baseline; theory-led actor-covariate comparison | Fixed-decay geometrically weighted degree; one-decay curved sensitivity; full undirected audit |
+| Sampson monastery liking nominations, Wave 3 | Directed, binary, unipartite | Edges + reciprocity; optional documented group matching | Edges + reciprocity + fixed-decay geometrically weighted in-degree; directed audit |
+| Lazega law-firm advice | Directed, binary, unipartite | Edges + reciprocity; optional organizational-attribute hypothesis | Edges + reciprocity baseline with a full directed audit; unstable fixed-decay degree refinements are not presented as defaults |
+| Davis Southern Women attendance | Undirected, binary, bipartite | Edges + bipartite degree terms on woman–event support | Support-aware bipartite baseline and full bipartite audit; no forced curved refinement |
+| Kapferer tailor-shop sociational ties | Undirected, binary, unipartite | Edges baseline and carefully labelled closure comparison | Fixed-decay edgewise shared-partner closure model; degree-plus-closure pilot is documented as nonmixing |
 
 Detailed provenance, data scope, and method-appropriateness limits are in [`data/dataset_catalog.json`](data/dataset_catalog.json) and the app.
 
@@ -73,12 +83,14 @@ For a public seminar service, use the repository's [`Dockerfile`](Dockerfile) an
 
 Detailed local-validation and Render deployment instructions are in [`docs/docker-deployment.md`](docs/docker-deployment.md).
 
-### 4. Verify the current unit
+### 4. Verify the implemented Day 1 units
 
 ```bash
 PYTHONPATH=app .venv/bin/pytest -q
 cd slides/session1_1
 pdflatex -interaction=nonstopmode -halt-on-error session1_1.tex
+cd ../session1_2
+pdflatex -interaction=nonstopmode -halt-on-error session1_2.tex
 ```
 
 ## BYOD contract for Session 1.1
@@ -100,7 +112,7 @@ The script extracts Florentine, Sampson, and Kapferer objects from the installed
 
 ## Slides
 
-The Beamer source and the three supplied template assets are under [`slides/session1_1/`](slides/session1_1/). The opening, agenda, and closing template PDFs are retained; all substantive slides use itemized academic content and bold purple key terms.
+The Beamer sources and supplied template assets are under [`slides/session1_1/`](slides/session1_1/) and [`slides/session1_2/`](slides/session1_2/). The opening, agenda, and closing template PDFs are retained; all substantive slides use itemized academic content and bold purple key terms. The Session 1.2 computation contract and audit boundary are documented in [`docs/session1_2_methods.md`](docs/session1_2_methods.md).
 
 ## License and data attribution
 

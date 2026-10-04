@@ -1,0 +1,71 @@
+[
+  {
+    "id": "florentine_business",
+    "formula": "nw ~ edges + gwdegree(0.5, fixed=TRUE)",
+    "mcmc_sample_size": 62,
+    "gof_status": "ok",
+    "gof_panels": [
+      "Degree distribution",
+      "Geodesic-distance distribution",
+      "Edgewise shared-partner distribution",
+      "Dyadwise shared-partner distribution"
+    ],
+    "auxiliary_status": "ok",
+    "diagnostic_flags": 6
+  },
+  {
+    "id": "sampson_liking_wave3",
+    "formula": "nw ~ edges + mutual + gwidegree(0.5, fixed=TRUE)",
+    "mcmc_sample_size": 62,
+    "gof_status": "ok",
+    "gof_panels": [
+      "In-degree distribution",
+      "Out-degree distribution",
+      "Directed geodesic-distance distribution",
+      "Directed triad census"
+    ],
+    "auxiliary_status": "ok",
+    "diagnostic_flags": 6
+  },
+  {
+    "id": "lazega_advice",
+    "formula": "nw ~ edges + mutual",
+    "mcmc_sample_size": 64,
+    "gof_status": "ok",
+    "gof_panels": [
+      "In-degree distribution",
+      "Out-degree distribution",
+      "Directed geodesic-distance distribution",
+      "Directed triad census"
+    ],
+    "auxiliary_status": "ok",
+    "diagnostic_flags": 5
+  },
+  {
+    "id": "davis_affiliation",
+    "formula": "nw ~ edges + b1degree(2)",
+    "mcmc_sample_size": 60,
+    "gof_status": "ok",
+    "gof_panels": [
+      "First-mode degree distribution",
+      "Second-mode degree distribution",
+      "Bipartite geodesic-distance distribution"
+    ],
+    "auxiliary_status": "ok",
+    "diagnostic_flags": 6
+  },
+  {
+    "id": "kapferer_sociational",
+    "formula": "nw ~ edges + gwesp(0.5, fixed=TRUE)",
+    "mcmc_sample_size": 57,
+    "gof_status": "ok",
+    "gof_panels": [
+      "Degree distribution",
+      "Geodesic-distance distribution",
+      "Edgewise shared-partner distribution",
+      "Dyadwise shared-partner distribution"
+    ],
+    "auxiliary_status": "ok",
+    "diagnostic_flags": 2
+  }
+]

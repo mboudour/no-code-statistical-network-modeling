@@ -11,7 +11,7 @@ st.markdown(
     "This public companion app makes documented network-model computations inspectable without requiring participants to write code. Each session page separates data support, model specification, computation, diagnostics, interpretation, and limits."
 )
 st.info(
-    "Session 1.1 is available now: Foundations of Static Exponential-Family Random Graph Models. Use the sidebar to open the session page."
+    "Day 1 is available now: open Session 1.1 for foundational static-ERGM specification and fit, or Session 1.2 for curved/stable specifications, MCMC diagnostics, simulation-based goodness of fit, and degeneracy-aware refinement."
 )
 st.markdown("### Academic principles")
 st.markdown(

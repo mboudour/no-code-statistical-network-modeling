@@ -12,6 +12,7 @@ from typing import Any
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 R_FIT_SCRIPT = PROJECT_DIR / "r" / "fit_static_ergm.R"
+R_SESSION12_FIT_SCRIPT = PROJECT_DIR / "r" / "fit_session1_2_ergm.R"
 R_BOOTSTRAP_SCRIPT = PROJECT_DIR / "r" / "bootstrap_packages.R"
 
 
@@ -121,6 +122,50 @@ def fit_static_ergm(
             result["warnings"] = [result["warnings"]]
         elif result.get("warnings") is None:
             result["warnings"] = []
+        result["r_stdout"] = completed.stdout.strip()
+        result["r_stderr"] = completed.stderr.strip()
+        return result
+
+
+def fit_session12_ergm(
+    payload: dict[str, Any], timeout_seconds: int = 900
+) -> dict[str, Any]:
+    """Run the Session 1.2 curved/stable ERGM engine with full diagnostics."""
+    status = engine_status()
+    if not status["available"]:
+        raise ErgMRuntimeError(status["reason"])
+    with tempfile.TemporaryDirectory(prefix="session12_ergm_") as temporary_directory:
+        directory = Path(temporary_directory)
+        input_path = directory / "input.json"
+        output_path = directory / "output.json"
+        input_path.write_text(json.dumps(payload, ensure_ascii=False))
+        completed = subprocess.run(
+            [status["rscript"], str(R_SESSION12_FIT_SCRIPT), str(input_path), str(output_path)],
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+            env=_environment(),
+            check=False,
+        )
+        if not output_path.exists():
+            message = (
+                completed.stderr
+                or completed.stdout
+                or "The Session 1.2 ERGM engine did not create a result file."
+            ).strip()
+            raise ErgMRuntimeError(message)
+        result = json.loads(output_path.read_text())
+        if result.get("status") != "ok":
+            raise ErgMRuntimeError(
+                result.get(
+                    "message", "The Session 1.2 ERGM engine returned an unspecified error."
+                )
+            )
+        for field in ("warnings", "diagnostic_flags"):
+            if isinstance(result.get(field), str):
+                result[field] = [result[field]]
+            elif result.get(field) is None:
+                result[field] = []
         result["r_stdout"] = completed.stdout.strip()
         result["r_stderr"] = completed.stderr.strip()
         return result
