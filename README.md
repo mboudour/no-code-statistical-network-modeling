@@ -6,6 +6,11 @@ Public computation repository for the **instats seminar, A Guide to Statistical 
 
 ---
 
+## Methodological Guide and Slides
+
+- **[Methodological guide](methodological_guide_and_slides/Boudourides_AGuideToStatisticalNetworkModeling_0.pdf)**
+- **Session slides:** [Session 1.1](methodological_guide_and_slides/session1_1.pdf) · [Session 1.2](methodological_guide_and_slides/session1_2.pdf) · [Session 2.1](methodological_guide_and_slides/session2_1.pdf) · [Session 2.2](methodological_guide_and_slides/session2_2.pdf) · [Session 3.1](methodological_guide_and_slides/session3_1.pdf) · [Session 3.2](methodological_guide_and_slides/session3_2.pdf)
+
 ## Interactive Companion App
 
 The **[Streamlit application hosted on Render](https://no-code-statistical-network-modeling.onrender.com/)** is the public no-code companion for the seminar. It provides implemented Day 1 workflows for Sessions 1.1 and 1.2, Day 2 workflows for Sessions 2.1 and 2.2, and Day 3 workflows for Sessions 3.1 and 3.2:
